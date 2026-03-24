@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O&M Manual Assembly</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#1a1a2e; --paper:#f5f2eb; --surface:#ffffff;
+  --rule:#d4cfc4; --accent:#c8392b; --accent2:#2563a8;
+  --gold:#b8860b; --muted:#7a7567; --success:#1a6b3c;
+  --warn:#b45309; --radius:5px;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --serif:'Playfair Display',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+
+/* HEADER */
+header{background:var(--ink);color:var(--paper);padding:0 28px;display:flex;align-items:stretch;gap:0;border-bottom:3px solid var(--accent);position:sticky;top:0;z-index:200;}
+.hbrand{display:flex;align-items:center;gap:12px;padding:13px 20px 13px 0;border-right:1px solid rgba(255,255,255,.1);margin-right:20px;}
+.bmark{width:34px;height:34px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;color:var(--accent);flex-shrink:0;}
+.btxt h1{font-family:var(--serif);font-size:14px;font-weight:700;}
+.btxt p{font-size:9.5px;color:rgba(245,242,235,.45);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px;}
+.hproj{flex:1;display:flex;align-items:center;gap:7px;}
+.pf{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:6px 9px;font-family:var(--sans);font-size:11.5px;color:var(--paper);transition:border-color .2s;}
+.pf:focus{outline:none;border-color:rgba(200,57,43,.6);}
+.pf::placeholder{color:rgba(245,242,235,.3);}
+.pf.w{width:190px;} .pf.m{width:130px;} .pf.s{width:105px;}
+.hright{display:flex;align-items:center;gap:8px;padding-left:16px;border-left:1px solid rgba(255,255,255,.1);}
+.hbtn{padding:5px 12px;border-radius:4px;font-family:var(--sans);font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;border:1px solid rgba(255,255,255,.2);background:none;color:rgba(245,242,235,.7);}
+.hbtn:hover{border-color:rgba(255,255,255,.5);color:var(--paper);}
+
+/* LAYOUT */
+main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65px);overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--rule);display:flex;flex-direction:column;overflow-y:auto;}
+.ss{padding:14px 15px;border-bottom:1px solid var(--rule);}
+.slbl{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;}
+.slbl::after{content:'';flex:1;height:1px;background:var(--rule);}
+
+/* DROP ZONES */
+.dz{border:1.5px dashed var(--rule);border-radius:var(--radius);padding:13px 10px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:#faf9f6;}
+.dz:hover,.dz.dragover{border-color:var(--accent2);background:#eff5ff;}
+.dz.gold:hover,.dz.gold.dragover{border-color:var(--gold);background:#fdf8ef;}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz .di{font-size:18px;margin-bottom:3px;}
+.dz .dl{font-size:11px;font-weight:600;margin-bottom:2px;}
+.dz .ds{font-size:10px;color:var(--muted);}
+
+/* FILE LIST */
+.flist{margin-top:7px;display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto;}
+.fi{display:flex;align-items:center;gap:5px;background:#faf9f6;border:1px solid var(--rule);border-radius:3px;padding:5px 7px;}
+.fi .fn{flex:1;font-family:var(--mono);font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fi .fsz{font-size:9px;color:var(--muted);white-space:nowrap;}
+.fi .frm{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0;transition:color .15s;}
+.fi .frm:hover{color:var(--accent);}
+.fi.spec-fi{border-color:rgba(37,99,168,.2);}
+.fi.doc-fi{border-color:rgba(184,134,11,.2);}
+
+/* SIZE METER */
+.smeter{margin-top:7px;}
+.srow{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;}
+.srow span:last-child{font-family:var(--mono);}
+.sbwrap{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;}
+.sbar{height:100%;border-radius:2px;transition:width .3s,background .3s;background:var(--success);}
+
+/* MAIN BUTTONS */
+.build-btn{width:100%;padding:11px;background:var(--ink);border:none;border-radius:var(--radius);color:var(--paper);font-family:var(--serif);font-size:13.5px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px;}
+.build-btn:hover{background:#2d2d4e;}
+.build-btn:disabled{background:var(--rule);color:var(--muted);cursor:not-allowed;}
+.run-btn{width:100%;padding:11px;background:var(--accent);border:none;border-radius:var(--radius);color:white;font-family:var(--serif);font-size:13.5px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px;margin-top:7px;}
+.run-btn:hover{background:#a02d22;}
+.run-btn:disabled{background:var(--rule);color:var(--muted);cursor:not-allowed;}
+.ghost-btn{width:100%;padding:8px;background:none;border:1px solid var(--rule);border-radius:var(--radius);color:var(--muted);font-family:var(--sans);font-size:11px;cursor:pointer;transition:all .2s;margin-top:6px;}
+.ghost-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* TAB PREVIEW LIST */
+.tab-preview-list{display:flex;flex-direction:column;gap:4px;}
+.tp-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#faf9f6;border:1px solid var(--rule);border-radius:var(--radius);}
+.tp-num{width:20px;height:20px;background:var(--ink);color:var(--paper);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;font-weight:500;flex-shrink:0;}
+.tp-name{flex:1;font-size:11.5px;font-weight:500;color:var(--ink);border:none;background:transparent;font-family:var(--sans);cursor:text;}
+.tp-name:focus{outline:none;}
+.tp-count{font-size:9.5px;color:var(--muted);font-family:var(--mono);white-space:nowrap;}
+.tp-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:0;transition:color .15s;}
+.tp-del:hover{color:var(--accent);}
+.add-tab-btn{width:100%;padding:7px;background:none;border:1.5px dashed var(--rule);border-radius:var(--radius);color:var(--muted);font-family:var(--sans);font-size:11px;cursor:pointer;transition:all .2s;margin-top:4px;}
+.add-tab-btn:hover{border-color:var(--ink);color:var(--ink);}
+
+/* CONTENT */
+.content{display:flex;flex-direction:column;overflow-y:auto;padding:26px 30px;gap:16px;background:var(--paper);}
+
+/* EMPTY STATE */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:60px;}
+.erule{width:40px;height:3px;background:var(--accent);margin:0 auto;}
+.empty-state h2{font-family:var(--serif);font-size:21px;font-weight:700;}
+.empty-state p{font-size:13px;color:var(--muted);max-width:400px;line-height:1.7;}
+.esteps{display:flex;gap:22px;margin-top:6px;flex-wrap:wrap;justify-content:center;}
+.estep .en{width:26px;height:26px;border:2px solid var(--rule);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:12px;color:var(--muted);margin:0 auto 5px;}
+.estep .el{font-size:10.5px;color:var(--muted);}
+
+/* PHASE BANNER */
+.phase-banner{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px;}
+.spinner{width:11px;height:11px;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.phase-txt{font-size:13px;color:var(--ink);flex:1;}
+.phase-hint{font-size:10.5px;color:var(--muted);font-family:var(--mono);}
+.pwrap{height:2px;background:var(--rule);border-radius:1px;overflow:hidden;margin-top:7px;}
+.pbar{height:100%;background:var(--accent);border-radius:1px;transition:width .5s ease;}
+
+/* SUMMARY */
+.sumrow{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+.sc{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:13px 15px;}
+.sc .sv{font-family:var(--serif);font-size:26px;font-weight:700;line-height:1;}
+.sc .sl{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.3px;}
+.sc-ok{border-color:rgba(26,107,60,.3);}.sc-ok .sv{color:var(--success);}
+.sc-warn{border-color:rgba(180,83,9,.3);}.sc-warn .sv{color:var(--warn);}
+.sc-miss{border-color:rgba(200,57,43,.3);}.sc-miss .sv{color:var(--accent);}
+
+/* ACTION BAR */
+.abar{display:flex;gap:8px;flex-wrap:wrap;}
+.abtn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .18s;}
+.abtn:hover{opacity:.85;transform:translateY(-1px);}
+.ab-pdf{background:var(--accent);color:white;}
+.ab-email{background:var(--accent2);color:white;}
+.ab-ghost{background:var(--surface);color:var(--muted);border:1px solid var(--rule);}
+.ab-ghost:hover{border-color:var(--accent);color:var(--accent);}
+
+/* MANUAL STRUCTURE */
+.ms{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;}
+.ms-hdr{padding:11px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--paper);}
+.ms-hdr h3{font-family:var(--serif);font-size:13.5px;font-weight:700;}
+.ms-hdr .mssub{font-size:10.5px;color:rgba(245,242,235,.45);margin-left:auto;font-family:var(--mono);}
+
+/* SECTION RESULTS */
+.sr{border-bottom:1px solid var(--rule);}
+.sr:last-child{border-bottom:none;}
+.sr-hdr{display:flex;align-items:center;gap:9px;padding:10px 18px;cursor:pointer;user-select:none;transition:background .15s;}
+.sr-hdr:hover{background:#faf9f6;}
+.sr-num{width:21px;height:21px;background:var(--ink);color:var(--paper);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;font-weight:500;flex-shrink:0;}
+.sr-name{font-weight:600;font-size:12.5px;flex:1;}
+.sr-badges{display:flex;gap:4px;margin-left:auto;}
+.srb{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:2px;}
+.srb-ok{background:rgba(26,107,60,.1);color:var(--success);}
+.srb-warn{background:rgba(180,83,9,.1);color:var(--warn);}
+.srb-miss{background:rgba(200,57,43,.1);color:var(--accent);}
+.srb-info{background:rgba(37,99,168,.1);color:var(--accent2);}
+.sr-body{padding:13px 18px 15px;display:none;border-top:1px solid var(--rule);background:#faf9f6;}
+.sr-body.open{display:block;}
+
+/* CHECK ITEMS */
+.ci{display:flex;gap:9px;padding:7px 11px;border-radius:3px;margin-bottom:5px;border:1px solid transparent;align-items:flex-start;}
+.ci-ok{background:rgba(26,107,60,.04);border-color:rgba(26,107,60,.14);}
+.ci-warn{background:rgba(180,83,9,.04);border-color:rgba(180,83,9,.14);}
+.ci-miss{background:rgba(200,57,43,.05);border-color:rgba(200,57,43,.17);}
+.ci-info{background:rgba(37,99,168,.04);border-color:rgba(37,99,168,.14);}
+.ci-ic{font-size:12px;flex-shrink:0;margin-top:1px;}
+.ci-tag{display:inline-block;font-family:var(--mono);font-size:8.5px;padding:1px 5px;border-radius:2px;margin-bottom:3px;letter-spacing:.3px;}
+.tt-ok{background:rgba(26,107,60,.12);color:var(--success);}
+.tt-warn{background:rgba(180,83,9,.12);color:var(--warn);}
+.tt-miss{background:rgba(200,57,43,.12);color:var(--accent);}
+.tt-info{background:rgba(37,99,168,.1);color:var(--accent2);}
+.ci-detail{font-size:11.5px;color:var(--muted);line-height:1.5;}
+
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(26,26,46,.65);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.mo.hidden{display:none;}
+.modal{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:26px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h2{font-family:var(--serif);font-size:17px;font-weight:700;margin-bottom:3px;}
+.modal .msub{font-size:11.5px;color:var(--muted);margin-bottom:18px;}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.mfl{font-size:9.5px;color:var(--muted);margin-bottom:3px;letter-spacing:.5px;text-transform:uppercase;}
+.mfi{background:#faf9f6;border:1px solid var(--rule);border-radius:4px;padding:7px 10px;font-family:var(--sans);font-size:12px;color:var(--ink);width:100%;transition:border-color .2s;}
+.mfi:focus{outline:none;border-color:var(--accent2);}
+.mfi::placeholder{color:var(--muted);}
+.logo-area{border:1.5px dashed var(--rule);border-radius:4px;padding:12px;text-align:center;cursor:pointer;background:#faf9f6;position:relative;transition:all .2s;min-height:56px;display:flex;align-items:center;justify-content:center;}
+.logo-area:hover{border-color:var(--accent2);}
+.logo-area input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.logo-preview{max-height:42px;max-width:160px;object-fit:contain;}
+.macts{display:flex;gap:8px;margin-top:18px;justify-content:flex-end;}
+.btn-save{padding:8px 20px;background:var(--ink);border:none;border-radius:4px;color:var(--paper);font-family:var(--sans);font-weight:600;font-size:12px;cursor:pointer;transition:background .2s;}
+.btn-save:hover{background:var(--accent);}
+.btn-cancel{padding:8px 14px;background:none;border:1px solid var(--rule);border-radius:4px;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer;}
+.btn-cancel:hover{border-color:var(--accent);color:var(--accent);}
+
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- COMPANY MODAL -->
+<div class="mo hidden" id="co-modal">
+  <div class="modal">
+    <h2>Company Information</h2>
+    <div class="msub">Saved in your browser — appears on every report. Edit anytime.</div>
+    <div class="mgrid">
+      <div><div class="mfl">Company Name</div><input class="mfi" id="s-name" placeholder="Postma Heating & Cooling"/></div>
+      <div><div class="mfl">Phone</div><input class="mfi" id="s-phone" placeholder="519-354-9491"/></div>
+      <div><div class="mfl">Address</div><input class="mfi" id="s-address" placeholder="22132 Charing Cross Road"/></div>
+      <div><div class="mfl">City / Province / Postal</div><input class="mfi" id="s-city" placeholder="Chatham, ON  N7M 5J3"/></div>
+      <div><div class="mfl">Email</div><input class="mfi" id="s-email" placeholder="info@company.com"/></div>
+      <div><div class="mfl">Website</div><input class="mfi" id="s-website" placeholder="www.company.com"/></div>
+    </div>
+    <div style="margin-top:9px;"><div class="mfl">Prepared By</div><input class="mfi" id="s-preparedby" placeholder="Jeff Nead, Project Manager" style="width:100%;"/></div>
+    <div style="margin-top:9px;">
+      <div class="mfl">Company Logo</div>
+      <div class="logo-area" id="logo-area"><input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)"><div id="logo-content" style="font-size:11px;color:var(--muted);">🖼 Click to upload logo</div></div>
+    </div>
+    <div class="macts">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hbrand">
+    <div class="bmark">O&M</div>
+    <div class="btxt"><h1>Manual Assembly</h1><p>Mechanical · HVAC</p></div>
+  </div>
+  <div class="hproj">
+    <input class="pf w" id="proj-name" placeholder="Project Name"/>
+    <input class="pf m" id="proj-number" placeholder="Job Number"/>
+    <input class="pf m" id="proj-engineer" placeholder="Engineer / Consultant"/>
+    <input class="pf m" id="proj-eng-email" placeholder="Engineer Email"/>
+    <input class="pf s" id="proj-date" type="date"/>
+  </div>
+  <div class="hright">
+    <div style="font-family:var(--mono);font-size:10px;color:rgba(245,242,235,.35);" id="size-badge">0 MB</div>
+    <button class="hbtn" onclick="openModal()">⚙ Company</button>
+  </div>
+</header>
+
+<main>
+  <aside class="sidebar">
+
+    <!-- Spec -->
+    <div class="ss">
+      <div class="slbl">Engineer Spec</div>
+      <div class="dz" id="spec-zone">
+        <input type="file" id="spec-input" multiple accept=".pdf,.doc,.docx,.txt">
+        <div class="di">📋</div>
+        <div class="dl">Drop spec file(s)</div>
+        <div class="ds">Sets required manual structure</div>
+      </div>
+      <div class="flist" id="spec-list"></div>
+    </div>
+
+    <!-- All Documents -->
+    <div class="ss">
+      <div class="slbl">All Project Documents</div>
+      <div class="dz gold" id="doc-zone">
+        <input type="file" id="doc-input" multiple accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.csv,.png,.jpg,.jpeg">
+        <div class="di">📁</div>
+        <div class="dl">Drop all files here</div>
+        <div class="ds">IOM manuals, warranties, TAB reports, as-builts, etc.</div>
+      </div>
+      <div class="flist" id="doc-list"></div>
+      <div class="smeter">
+        <div class="srow"><span>Total size</span><span id="size-txt">0 MB</span></div>
+        <div class="sbwrap"><div class="sbar" id="size-bar" style="width:0%"></div></div>
+        <div id="size-hint" style="font-size:9.5px;color:var(--muted);margin-top:4px;">First 1–2 pages read per file. Large packages are fine.</div>
+      </div>
+    </div>
+
+    <!-- Step 1: Build Tabs -->
+    <div class="ss">
+      <div class="slbl">Step 1 — Build Index</div>
+      <button class="build-btn" id="build-btn" disabled onclick="buildIndex()">🤖 Auto-Build Manual Index</button>
+      <div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.6;">AI reads the first page of each file, identifies what it is, and automatically builds the tab structure for this project.</div>
+    </div>
+
+    <!-- Tab Preview (shown after build) -->
+    <div class="ss hidden" id="tabs-section">
+      <div class="slbl">Manual Sections</div>
+      <div class="tab-preview-list" id="tab-preview-list"></div>
+      <button class="add-tab-btn" onclick="addTab()">+ Add Section</button>
+    </div>
+
+    <!-- Step 2: Full Review -->
+    <div class="ss hidden" id="review-section" style="border-bottom:none;">
+      <div class="slbl">Step 2 — Review</div>
+      <button class="run-btn" id="run-btn" onclick="runFullReview()">Review &amp; Index Manual</button>
+      <button class="ghost-btn" onclick="clearAll()">Clear Session</button>
+      <div style="margin-top:10px;font-size:10px;color:var(--muted);line-height:1.65;">
+        <strong style="color:var(--success);">🔒 No server storage.</strong> Files stay in your browser only.
+      </div>
+    </div>
+
+  </aside>
+
+  <div class="content" id="content">
+    <div class="empty-state" id="empty-state">
+      <div class="erule"></div>
+      <h2>O&amp;M Manual Assembly</h2>
+      <p>Drop in all the documents from your suppliers and subs. The AI reads the first page of each file, figures out what it is, and automatically builds the tab structure for this project.</p>
+      <div class="esteps">
+        <div class="estep"><div class="en">1</div><div class="el">Upload spec</div></div>
+        <div class="estep"><div class="en">2</div><div class="el">Drop all files</div></div>
+        <div class="estep"><div class="en">3</div><div class="el">Auto-build index</div></div>
+        <div class="estep"><div class="en">4</div><div class="el">Review &amp; tweak</div></div>
+        <div class="estep"><div class="en">5</div><div class="el">Export PDF</div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<iframe id="print-frame" style="position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;"></iframe>
+
+<script>
+// ── STATE ─────────────────────────────────────────────
+let company={}, logoDataUrl=null;
+let specFiles=[], docFiles=[];
+let tabs=[]; // [{id,name,files:[],order}]
+let results={}; // tabId -> parsed result
+let tabIdCounter=0;
+
+// ── SETTINGS ──────────────────────────────────────────
+function loadSettings(){
+  const s=localStorage.getItem('om_co_v2'); if(s) company=JSON.parse(s);
+  const l=localStorage.getItem('om_co_logo'); if(l) logoDataUrl=l;
+  const d=document.getElementById('proj-date'); if(!d.value) d.value=new Date().toISOString().slice(0,10);
+}
+function openModal(){
+  ['name','phone','address','city','email','website','preparedby'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.value=company[k]||'';});
+  if(logoDataUrl) document.getElementById('logo-content').innerHTML=`<img src="${logoDataUrl}" class="logo-preview">`;
+  document.getElementById('co-modal').classList.remove('hidden');
+}
+function closeModal(){document.getElementById('co-modal').classList.add('hidden');}
+function saveSettings(){
+  company={};
+  ['name','phone','address','city','email','website','preparedby'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)company[k]=el.value.trim();});
+  localStorage.setItem('om_co_v2',JSON.stringify(company));
+  if(logoDataUrl) localStorage.setItem('om_co_logo',logoDataUrl);
+  closeModal();
+}
+function handleLogoUpload(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{logoDataUrl=ev.target.result;document.getElementById('logo-content').innerHTML=`<img src="${logoDataUrl}" class="logo-preview">`;};r.readAsDataURL(f);
+}
+
+// ── FILE HELPERS ──────────────────────────────────────
+const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+const toText=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(f);});
+function fmtSz(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function fIcon(n){const e=n.split('.').pop().toLowerCase();return e==='pdf'?'📄':['doc','docx'].includes(e)?'📝':['xls','xlsx','csv'].includes(e)?'📊':['png','jpg','jpeg'].includes(e)?'🖼️':'📁';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function totalBytes(){
+  return specFiles.reduce((a,f)=>a+f.size,0)+docFiles.reduce((a,f)=>a+f.size,0);
+}
+function updateSizeMeter(){
+  const mb=totalBytes()/1048576,pct=Math.min(100,(mb/150)*100);
+  const bar=document.getElementById('size-bar'),txt=document.getElementById('size-txt'),badge=document.getElementById('size-badge'),hint=document.getElementById('size-hint');
+  if(txt)txt.textContent=mb.toFixed(1)+' MB';
+  if(badge)badge.textContent=mb.toFixed(1)+' MB';
+  if(bar){bar.style.width=pct+'%';bar.style.background=pct>85?'var(--accent)':pct>60?'var(--warn)':'var(--success)';}
+  if(hint){if(pct>85)hint.innerHTML='<span style="color:var(--accent)">Large — AI still only reads first pages, so this is fine.</span>';else hint.textContent='First 1–2 pages read per file. Large packages are fine.';}
+  checkBuildReady();
+}
+function checkBuildReady(){
+  const btn=document.getElementById('build-btn');
+  if(btn) btn.disabled=docFiles.length===0;
+}
+
+// ── RENDER FILE LISTS ─────────────────────────────────
+function renderSpecList(){
+  const c=document.getElementById('spec-list');c.innerHTML='';
+  specFiles.forEach((f,i)=>{
+    const el=document.createElement('div');el.className='fi spec-fi';
+    el.innerHTML=`<span style="font-size:11px">${fIcon(f.name)}</span><span class="fn" title="${esc(f.name)}">${esc(f.name)}</span><span class="fsz">${fmtSz(f.size)}</span><button class="frm" onclick="rmSpec(${i})">×</button>`;
+    c.appendChild(el);
+  });
+  updateSizeMeter();
+}
+function rmSpec(i){specFiles.splice(i,1);renderSpecList();}
+
+function renderDocList(){
+  const c=document.getElementById('doc-list');c.innerHTML='';
+  docFiles.forEach((f,i)=>{
+    const el=document.createElement('div');el.className='fi doc-fi';
+    el.innerHTML=`<span style="font-size:11px">${fIcon(f.name)}</span><span class="fn" title="${esc(f.name)}">${esc(f.name)}</span><span class="fsz">${fmtSz(f.size)}</span><button class="frm" onclick="rmDoc(${i})">×</button>`;
+    c.appendChild(el);
+  });
+  updateSizeMeter();
+}
+function rmDoc(i){docFiles.splice(i,1);renderDocList();tabs=[];results={};hideSections();}
+
+// ── DRAG & DROP SETUP ─────────────────────────────────
+function setupDrop(zoneId,handler){
+  const z=document.getElementById(zoneId);
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('dragover');});
+  z.addEventListener('dragleave',()=>z.classList.remove('dragover'));
+  z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('dragover');handler(e.dataTransfer.files);});
+}
+document.getElementById('spec-input').addEventListener('change',e=>{specFiles=[...specFiles,...Array.from(e.target.files)];renderSpecList();});
+document.getElementById('doc-input').addEventListener('change',e=>{docFiles=[...docFiles,...Array.from(e.target.files)];renderDocList();});
+setupDrop('spec-zone',fl=>{specFiles=[...specFiles,...Array.from(fl)];renderSpecList();});
+setupDrop('doc-zone',fl=>{docFiles=[...docFiles,...Array.from(fl)];renderDocList();});
+
+// ── TABS ──────────────────────────────────────────────
+function addTab(name){
+  const t={id:++tabIdCounter,name:name||'New Section',files:[]};
+  tabs.push(t);
+  renderTabPreview();
+}
+function removeTab(id){tabs=tabs.filter(t=>t.id!==id);delete results[id];renderTabPreview();}
+function renderTabPreview(){
+  const c=document.getElementById('tab-preview-list');c.innerHTML='';
+  tabs.forEach((t,i)=>{
+    const el=document.createElement('div');el.className='tp-item';
+    el.innerHTML=`<div class="tp-num">${i+1}</div><input class="tp-name" id="tpn-${t.id}" value="${esc(t.name)}" onchange="tabs.find(x=>x.id===${t.id}).name=this.value"><span class="tp-count">${t.files.length} file${t.files.length!==1?'s':''}</span><button class="tp-del" onclick="removeTab(${t.id})">×</button>`;
+    c.appendChild(el);
+  });
+}
+function showSections(){
+  document.getElementById('tabs-section').classList.remove('hidden');
+  document.getElementById('review-section').classList.remove('hidden');
+}
+function hideSections(){
+  document.getElementById('tabs-section').classList.add('hidden');
+  document.getElementById('review-section').classList.add('hidden');
+}
+
+// ── PHASE 1: AUTO-BUILD INDEX ─────────────────────────
+async function buildIndex(){
+  const btn=document.getElementById('build-btn');
+  btn.disabled=true; btn.textContent='Reading files…';
+  setContent(`<div class="phase-banner"><div class="spinner"></div><div style="flex:1"><div class="phase-txt">Reading first pages of ${docFiles.length} file${docFiles.length!==1?'s':''}…</div><div class="pwrap"><div class="pbar" style="width:30%"></div></div></div><div class="phase-hint">${docFiles.length} documents</div></div>`);
+
+  try {
+    // Build file inventory for Claude — just names, sizes, and first-page content
+    const parts=[];
+    const projName=document.getElementById('proj-name').value||'this project';
+
+    parts.push({type:'text',text:`You are assembling an Operations and Maintenance Manual for a mechanical HVAC project.
+Project: ${projName}
+
+You have been given a collection of documents uploaded by the contractor. Your job is to:
+1. Identify what EACH file is (one sentence max per file)
+2. Group them into logical MANUAL SECTIONS / TABS — exactly like a physical O&M binder
+3. Return a structured JSON response ONLY — no other text
+
+The manual should follow this general structure (adapt based on what's actually present):
+- Cover / Title Page
+- General Section (substantial completion letter, contractor warranty letter, contact lists)  
+- One section per major piece of equipment (e.g. "York Rooftop Unit", "Captive Aire Exhaust Fans")
+- Each equipment section contains: IOM manual, data sheet, warranty, startup report
+- Testing & Balancing / Air Balance Report (its own tab)
+- Fire suppression / balloon test reports (own tab if present)
+- Mechanical As-Built Drawings (last tab)
+
+Return ONLY valid JSON in this exact format:
+{
+  "sections": [
+    {
+      "name": "Tab name (manufacturer + equipment type, e.g. 'York — Rooftop Air Conditioner')",
+      "files": ["filename1.pdf", "filename2.pdf"],
+      "notes": "Brief note about what's in this section"
+    }
+  ],
+  "unassigned": ["filename.pdf"],
+  "missing": ["Description of required item not found in uploaded files"]
+}
+
+Rules:
+- Section names should match how a physical binder tab would be labelled
+- Every uploaded file must appear in exactly one section OR in unassigned
+- If a file could belong to multiple sections, put it in the most specific one
+- unassigned = files you couldn't confidently identify
+- missing = items the spec requires that were NOT uploaded`});
+
+    // Add spec context (first page only, as text summary)
+    if(specFiles.length>0){
+      parts.push({type:'text',text:`\n\n=== ENGINEER SPECIFICATION (defines what the manual must contain) ===`});
+      for(const f of specFiles){
+        const ext=f.name.split('.').pop().toLowerCase();
+        if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64(f)}});}
+        else{try{parts.push({type:'text',text:(await toText(f)).slice(0,3000)});}catch{}}
+      }
+    }
+
+    // Add each doc — first page only
+    parts.push({type:'text',text:`\n\n=== UPLOADED DOCUMENTS (skim first 1-2 pages only to identify each one) ===`});
+    for(const f of docFiles){
+      const ext=f.name.split('.').pop().toLowerCase();
+      parts.push({type:'text',text:`\n--- FILE: ${f.name} (${fmtSz(f.size)}) ---`});
+      if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64(f)}});}
+      else if(['png','jpg','jpeg'].includes(ext)){const b=await toB64(f);parts.push({type:'image',source:{type:'base64',media_type:ext==='jpg'?'image/jpeg':`image/${ext}`,data:b}});}
+      else{try{parts.push({type:'text',text:(await toText(f)).slice(0,1500)});}catch{parts.push({type:'text',text:'[Could not read]'});}}
+    }
+
+    setContent(`<div class="phase-banner"><div class="spinner"></div><div style="flex:1"><div class="phase-txt">AI is identifying documents and building manual structure…</div><div class="pwrap"><div class="pbar" style="width:65%"></div></div></div></div>`);
+
+    const resp=await fetch(API_URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:parts}]})
+    });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||`API error ${resp.status}`);}
+    const data=await resp.json();
+    const raw=data.content.map(b=>b.text||'').join('').trim();
+
+    // Parse JSON — strip any markdown fences
+    const jsonStr=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    const parsed=JSON.parse(jsonStr);
+
+    // Build tabs from AI response
+    tabs=[];
+    tabIdCounter=0;
+    if(parsed.sections && Array.isArray(parsed.sections)){
+      parsed.sections.forEach(sec=>{
+        const id=++tabIdCounter;
+        const matchedFiles=docFiles.filter(f=>sec.files && sec.files.some(n=>n===f.name||f.name.includes(n)||n.includes(f.name)));
+        tabs.push({id,name:sec.name,files:matchedFiles,notes:sec.notes||''});
+      });
+    }
+
+    // Any unassigned files get their own section
+    const assignedNames=new Set(tabs.flatMap(t=>t.files.map(f=>f.name)));
+    const unassigned=docFiles.filter(f=>!assignedNames.has(f.name));
+    if(unassigned.length>0){
+      tabs.push({id:++tabIdCounter,name:'Unassigned Documents',files:unassigned,notes:'Could not be automatically classified'});
+    }
+
+    // Store missing items for later
+    window._missing=parsed.missing||[];
+
+    renderTabPreview();
+    showSections();
+    renderIndexPreview(parsed);
+
+  } catch(err){
+    setContent(`<div class="phase-banner" style="border-color:var(--accent)"><div style="font-size:16px;flex-shrink:0;">❌</div><div><div class="phase-txt" style="color:var(--accent)">Error: ${esc(err.message)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">Check your API key configuration and try again.</div></div></div>`);
+  }
+
+  btn.disabled=false;btn.textContent='🤖 Auto-Build Manual Index';
+  checkBuildReady();
+}
+
+function renderIndexPreview(parsed){
+  const projName=document.getElementById('proj-name').value||'O&M Manual';
+  let html=`
+    <div class="abar" style="margin-bottom:4px;">
+      <button class="abtn ab-pdf" onclick="exportPDF()">📄 Export Report</button>
+      <button class="abtn ab-email" onclick="openOutlook()">✉️ Email Engineer</button>
+      <button class="abtn ab-ghost" onclick="clearAll()">Clear Session</button>
+    </div>
+    <div class="ms">
+      <div class="ms-hdr"><h3>${esc(projName)} — Proposed Manual Index</h3><span class="mssub">${tabs.length} sections · ${docFiles.length} files</span></div>`;
+
+  tabs.forEach((t,i)=>{
+    const r=results[t.id];
+    html+=`
+      <div class="sr">
+        <div class="sr-hdr" onclick="toggleResult(${t.id})">
+          <div class="sr-num">${i+1}</div>
+          <span class="sr-name">${esc(t.name)}</span>
+          <div class="sr-badges">
+            ${r?`${r.present>0?`<span class="srb srb-ok">✅ ${r.present}</span>`:''}${r.notes_cnt>0?`<span class="srb srb-warn">⚠️ ${r.notes_cnt}</span>`:''}${r.missing>0?`<span class="srb srb-miss">❌ ${r.missing}</span>`:''}`:
+            `<span class="srb srb-info">${t.files.length} file${t.files.length!==1?'s':''}</span>`}
+          </div>
+        </div>
+        <div class="sr-body ${r?'open':''}" id="srb-${t.id}">
+          ${r?r.html:t.files.map(f=>`<div class="ci ci-info"><span class="ci-ic">📄</span><div><span class="ci-tag tt-info">FILE</span><div class="ci-detail">${esc(f.name)} — ${fmtSz(f.size)}</div></div></div>`).join('')+
+          (t.notes?`<div style="font-size:11px;color:var(--muted);margin-top:6px;font-style:italic;">${esc(t.notes)}</div>`:'')}
+        </div>
+      </div>`;
+  });
+
+  if(window._missing && window._missing.length>0){
+    html+=`<div class="sr"><div class="sr-hdr"><div class="sr-num" style="background:var(--accent);">!</div><span class="sr-name">Required Items Not Found</span><div class="sr-badges"><span class="srb srb-miss">❌ ${window._missing.length}</span></div></div><div class="sr-body open" id="srb-missing">${window._missing.map(m=>`<div class="ci ci-miss"><span class="ci-ic">❌</span><div><span class="ci-tag tt-miss">MISSING</span><div class="ci-detail">${esc(m)}</div></div></div>`).join('')}</div></div>`;
+  }
+
+  html+=`</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Index built — review sections above, then click Review &amp; Index Manual for full compliance check</div>`;
+  setContent(html);
+}
+
+// ── PHASE 2: FULL REVIEW ──────────────────────────────
+async function runFullReview(){
+  const btn=document.getElementById('run-btn');
+  btn.disabled=true;btn.textContent='Reviewing…';
+  results={};
+
+  for(let i=0;i<tabs.length;i++){
+    const t=tabs[i];
+    if(t.files.length===0)continue;
+    setPhaseProgress(`Reviewing section ${i+1} of ${tabs.length}: ${t.name}…`, Math.round(((i)/tabs.length)*100));
+    await reviewTab(t);
+    renderIndexPreview({});
+  }
+
+  renderFinalResults();
+  btn.disabled=false;btn.textContent='Review & Index Manual';
+}
+
+async function reviewTab(tab){
+  const parts=[];
+  const projName=document.getElementById('proj-name').value||'this project';
+
+  parts.push({type:'text',text:`You are reviewing one section of an Operations & Maintenance Manual.
+Project: ${projName}
+Section: "${tab.name}"
+
+Review ONLY the files in this section. For each file:
+- Confirm what it is
+- Check it belongs in this section  
+- Identify if anything required is missing
+
+Use prefixes: ✅ PRESENT ⚠️ NOTE ❌ MISSING ℹ️ INFO
+
+Required items per section (as applicable): equipment data sheet, IOM manual, warranty, startup/commissioning report, maintenance schedule, supplier contacts, approved shop drawings.
+
+STRUCTURE:
+## ${tab.name.toUpperCase()}
+## DOCUMENTS IN THIS SECTION
+(one line per file — prefix + what it is + any concern)
+## SECTION COMPLETENESS
+## MISSING ITEMS
+## RECOMMENDED DOCUMENT ORDER
+(numbered list)`});
+
+  if(specFiles.length>0){
+    parts.push({type:'text',text:`\n\n=== SPEC (applicable requirements) ===`});
+    for(const f of specFiles){
+      const ext=f.name.split('.').pop().toLowerCase();
+      if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64(f)}});}
+      else{try{parts.push({type:'text',text:(await toText(f)).slice(0,2000)});}catch{}}
+    }
+  }
+
+  for(const f of tab.files){
+    const ext=f.name.split('.').pop().toLowerCase();
+    parts.push({type:'text',text:`\n\n=== ${f.name} (${fmtSz(f.size)}) — skim first 1-2 pages only ===`});
+    if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64(f)}});}
+    else if(['png','jpg','jpeg'].includes(ext)){const b=await toB64(f);parts.push({type:'image',source:{type:'base64',media_type:ext==='jpg'?'image/jpeg':`image/${ext}`,data:b}});}
+    else{try{parts.push({type:'text',text:(await toText(f)).slice(0,1500)});}catch{}}
+  }
+
+  try{
+    const resp=await fetch(API_URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:parts}]})
+    });
+    if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||`API ${resp.status}`);}
+    const data=await resp.json();
+    const text=data.content.map(b=>b.text||'').join('\n');
+    results[tab.id]=parseReport(text);
+  }catch(err){
+    results[tab.id]={present:0,notes_cnt:0,missing:0,html:`<div class="ci ci-miss"><div><span class="ci-tag tt-miss">ERROR</span><div class="ci-detail">${esc(err.message)}</div></div></div>`,text:''};
+  }
+}
+
+function setPhaseProgress(msg,pct){
+  setContent(`<div class="phase-banner"><div class="spinner"></div><div style="flex:1"><div class="phase-txt">${esc(msg)}</div><div class="pwrap"><div class="pbar" style="width:${pct}%"></div></div></div></div>`);
+}
+
+// ── PARSE REPORT ──────────────────────────────────────
+function parseReport(text){
+  let present=0,notes_cnt=0,missing=0,html='';
+  for(const line of text.split('\n')){
+    const t=line.trim();
+    if(!t){html+='<div style="height:3px"></div>';continue;}
+    if(t.startsWith('##')||t.startsWith('#')){html+=`<h3 style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:12px 0 6px;font-family:var(--mono);">${esc(t.replace(/^#+\s*/,''))}</h3>`;continue;}
+    if(t.startsWith('---')){html+=`<hr style="border:none;border-top:1px solid var(--rule);margin:7px 0;">`;continue;}
+    if(t.startsWith('✅')){present++;html+=`<div class="ci ci-ok"><span class="ci-ic">✅</span><div><span class="ci-tag tt-ok">PRESENT</span><div class="ci-detail">${esc(t.replace(/^✅\s*/,''))}</div></div></div>`;continue;}
+    if(t.startsWith('⚠️')){notes_cnt++;html+=`<div class="ci ci-warn"><span class="ci-ic">⚠️</span><div><span class="ci-tag tt-warn">NOTE</span><div class="ci-detail">${esc(t.replace(/^⚠️\s*/,''))}</div></div></div>`;continue;}
+    if(t.startsWith('❌')){missing++;html+=`<div class="ci ci-miss"><span class="ci-ic">❌</span><div><span class="ci-tag tt-miss">MISSING</span><div class="ci-detail">${esc(t.replace(/^❌\s*/,''))}</div></div></div>`;continue;}
+    if(t.startsWith('ℹ️')){html+=`<div class="ci ci-info"><span class="ci-ic">ℹ️</span><div><span class="ci-tag tt-info">INFO</span><div class="ci-detail">${esc(t.replace(/^ℹ️\s*/,''))}</div></div></div>`;continue;}
+    if(t.match(/^\d+\./)||t.startsWith('-')||t.startsWith('•')){html+=`<div style="padding:2px 0 2px 12px;font-size:11.5px;color:var(--muted);">${esc(t)}</div>`;continue;}
+    html+=`<p style="font-size:12px;color:var(--ink);margin:2px 0;line-height:1.5;">${esc(t)}</p>`;
+  }
+  return{present,notes_cnt,missing,total:present+notes_cnt+missing,html,text};
+}
+
+// ── FINAL RESULTS ─────────────────────────────────────
+function renderFinalResults(){
+  const allR=Object.values(results);
+  const totP=allR.reduce((a,r)=>a+r.present,0);
+  const totN=allR.reduce((a,r)=>a+r.notes_cnt,0);
+  const totM=allR.reduce((a,r)=>a+r.missing,0);
+  const projName=document.getElementById('proj-name').value||'O&M Manual';
+  const projNum=document.getElementById('proj-number').value;
+  const dateStr=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+
+  let html=`
+    <div class="abar">
+      <button class="abtn ab-pdf" onclick="exportPDF()">📄 Export Indexed Report</button>
+      <button class="abtn ab-email" onclick="openOutlook()">✉️ Email Engineer</button>
+      <button class="abtn ab-ghost" onclick="clearAll()">Clear Session</button>
+    </div>
+    <div class="sumrow">
+      <div class="sc"><div class="sv">${totP+totN+totM}</div><div class="sl">Items Reviewed</div></div>
+      <div class="sc sc-ok"><div class="sv">${totP}</div><div class="sl">✅ Present</div></div>
+      <div class="sc sc-warn"><div class="sv">${totN}</div><div class="sl">⚠️ Attention</div></div>
+      <div class="sc sc-miss"><div class="sv">${totM}</div><div class="sl">❌ Missing</div></div>
+    </div>
+    <div class="ms">
+      <div class="ms-hdr"><h3>${esc(projName)} — O&amp;M Manual Index</h3><span class="mssub">${projNum?'Job #'+projNum+' · ':''}${dateStr}</span></div>`;
+
+  tabs.forEach((t,i)=>{
+    const r=results[t.id];if(!r)return;
+    html+=`
+      <div class="sr">
+        <div class="sr-hdr" onclick="toggleResult(${t.id})">
+          <div class="sr-num">${i+1}</div>
+          <span class="sr-name">${esc(t.name)}</span>
+          <div class="sr-badges">
+            ${r.present>0?`<span class="srb srb-ok">✅ ${r.present}</span>`:''}
+            ${r.notes_cnt>0?`<span class="srb srb-warn">⚠️ ${r.notes_cnt}</span>`:''}
+            ${r.missing>0?`<span class="srb srb-miss">❌ ${r.missing}</span>`:''}
+          </div>
+        </div>
+        <div class="sr-body open" id="srb-${t.id}">${r.html}</div>
+      </div>`;
+  });
+
+  html+=`</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Review complete · No files saved to server · Clear session when done</div>`;
+  setContent(html);
+}
+
+function toggleResult(id){const b=document.getElementById(`srb-${id}`);if(b)b.classList.toggle('open');}
+function setContent(html){document.getElementById('content').innerHTML=html;}
+
+// ── CLEAR ─────────────────────────────────────────────
+function clearAll(){
+  specFiles=[];docFiles=[];tabs=[];results=[];window._missing=[];
+  renderSpecList();renderDocList();hideSections();
+  document.getElementById('spec-input').value='';
+  document.getElementById('doc-input').value='';
+  setContent(`<div class="empty-state"><div class="erule"></div><h2>O&amp;M Manual Assembly</h2><p>Upload spec and project documents to begin.</p></div>`);
+}
+
+// ── PDF EXPORT ────────────────────────────────────────
+function buildReportHTML(){
+  const projName=document.getElementById('proj-name').value||'O&M Manual';
+  const projNum=document.getElementById('proj-number').value||'';
+  const projEng=document.getElementById('proj-engineer').value||'';
+  const projDate=document.getElementById('proj-date').value||new Date().toISOString().slice(0,10);
+  const dateStr=new Date(projDate+'T12:00:00').toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+  const printDate=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+  const allR=Object.values(results);
+  const totP=allR.reduce((a,r)=>a+r.present,0),totN=allR.reduce((a,r)=>a+r.notes_cnt,0),totM=allR.reduce((a,r)=>a+r.missing,0);
+  const logoTag=logoDataUrl?`<img src="${logoDataUrl}" style="max-height:50px;max-width:180px;object-fit:contain;">`:`<div style="font-size:17pt;font-weight:700;color:#1a1a2e;font-family:Georgia,serif;">${company.name||''}</div>`;
+
+  let sections='';
+  tabs.forEach((t,i)=>{
+    const r=results[t.id];
+    let body='';
+    const text=r?r.text:'';
+    if(text){
+      for(const line of text.split('\n')){
+        const txt=line.trim();
+        if(!txt){body+='<div style="height:3px"></div>';continue;}
+        if(txt.startsWith('##')||txt.startsWith('#')){body+=`<h3 style="font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7a7567;margin:11px 0 4px;border-bottom:1px solid #d4cfc4;padding-bottom:2px;">${txt.replace(/^#+\s*/,'')}</h3>`;continue;}
+        const sm={'✅':{lbl:'PRESENT',c:'#1a6b3c',bg:'#f0f7f3',bd:'#a8d5b8'},'⚠️':{lbl:'NOTE',c:'#b45309',bg:'#fdf8ef',bd:'#f0d090'},'❌':{lbl:'MISSING',c:'#c8392b',bg:'#fdf0ef',bd:'#f0b0a8'},'ℹ️':{lbl:'INFO',c:'#2563a8',bg:'#eff5ff',bd:'#a8c8f0'}};
+        let matched=false;
+        for(const[em,s]of Object.entries(sm)){if(txt.startsWith(em)){body+=`<div style="display:flex;gap:7px;padding:5px 9px;border-radius:3px;margin-bottom:4px;border:1px solid ${s.bd};background:${s.bg};page-break-inside:avoid;"><span style="font-size:11pt;flex-shrink:0;">${em}</span><div><span style="display:inline-block;font-size:7pt;font-weight:700;letter-spacing:.5px;padding:1px 5px;border-radius:2px;background:${s.c}20;color:${s.c};margin-bottom:2px;">${s.lbl}</span><div style="font-size:9pt;color:#3a3632;line-height:1.5;">${txt.replace(new RegExp('^'+em+'\\s*'),'')}</div></div></div>`;matched=true;break;}}
+        if(!matched&&!txt.startsWith('---'))body+=`<p style="font-size:9pt;color:#3a3632;margin:2px 0;">${txt}</p>`;
+      }
+    } else {
+      // Index preview only (before full review)
+      t.files.forEach(f=>{body+=`<div style="font-size:9pt;color:#3a3632;padding:2px 0;">📄 ${f.name}</div>`;});
+    }
+
+    sections+=`
+      <div style="margin-bottom:20px;page-break-inside:avoid;">
+        <div style="display:flex;align-items:center;gap:9px;background:#1a1a2e;color:#f5f2eb;padding:7px 13px;border-radius:3px;margin-bottom:8px;">
+          <div style="width:20px;height:20px;background:rgba(255,255,255,.15);border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10pt;font-weight:700;">${i+1}</div>
+          <span style="font-size:11pt;font-weight:700;font-family:Georgia,serif;">${t.name}</span>
+          ${r?`<span style="margin-left:auto;font-size:8pt;opacity:.65;">✅ ${r.present} &nbsp;⚠️ ${r.notes_cnt} &nbsp;❌ ${r.missing}</span>`:`<span style="margin-left:auto;font-size:8pt;opacity:.65;">${t.files.length} files</span>`}
+        </div>
+        ${body}
+      </div>`;
+  });
+
+  return`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+  @page{margin:17mm 14mm 14mm 14mm;size:letter;}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.4;}
+  .lh{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:3px solid #c8392b;margin-bottom:13px;}
+  .co{font-size:8pt;color:#7a7567;line-height:1.6;text-align:right;}
+  .dt{background:#1a1a2e;color:#f5f2eb;padding:8px 13px;border-radius:3px;margin-bottom:11px;}
+  .dt h1{font-size:12.5pt;font-weight:700;font-family:Georgia,serif;margin-bottom:1px;}
+  .dt .sub{font-size:8pt;opacity:.65;}
+  .mg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px;}
+  .mc{border:1px solid #d4cfc4;border-radius:3px;padding:6px 9px;background:#faf9f6;}
+  .ml{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#7a7567;margin-bottom:1px;}
+  .mv{font-size:9pt;color:#1a1a2e;font-weight:600;}
+  .sr{display:flex;gap:7px;margin-bottom:13px;}
+  .sc{flex:1;border-radius:3px;padding:8px;text-align:center;border:1px solid;}
+  .sc .v{font-size:18pt;font-weight:700;font-family:Georgia,serif;line-height:1;}
+  .sc .l{font-size:7.5pt;margin-top:2px;}
+  .st{background:#f5f2eb;border-color:#d4cfc4;}.st .v{color:#1a1a2e;}
+  .sp{background:#f0f7f3;border-color:#a8d5b8;}.sp .v{color:#1a6b3c;}
+  .sw{background:#fdf8ef;border-color:#f0d090;}.sw .v{color:#b45309;}
+  .sf{background:#fdf0ef;border-color:#f0b0a8;}.sf .v{color:#c8392b;}
+  .ft{margin-top:18px;padding-top:7px;border-top:1px solid #d4cfc4;display:flex;justify-content:space-between;font-size:7.5pt;color:#7a7567;}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  </style></head><body>
+  <div class="lh"><div>${logoTag}</div><div class="co">${company.name?'<strong>'+company.name+'</strong><br>':''}${company.address?company.address+'<br>':''}${company.city?company.city+'<br>':''}${company.phone?'Tel: '+company.phone+'<br>':''}${company.email?company.email:''}</div></div>
+  <div class="dt"><h1>Operations &amp; Maintenance Manual</h1><div class="sub">Index &amp; Completeness Review — Mechanical HVAC Systems</div></div>
+  <div class="mg">
+    <div class="mc"><div class="ml">Project</div><div class="mv">${projName}</div></div>
+    <div class="mc"><div class="ml">Job Number</div><div class="mv">${projNum||'—'}</div></div>
+    <div class="mc"><div class="ml">Date</div><div class="mv">${dateStr}</div></div>
+    <div class="mc"><div class="ml">Engineer</div><div class="mv">${projEng||'—'}</div></div>
+    <div class="mc"><div class="ml">Prepared By</div><div class="mv">${company.preparedby||'—'}</div></div>
+    <div class="mc"><div class="ml">Printed</div><div class="mv">${printDate}</div></div>
+  </div>
+  ${allR.length>0?`<div class="sr">
+    <div class="sc st"><div class="v">${totP+totN+totM}</div><div class="l">Items Reviewed</div></div>
+    <div class="sc sp"><div class="v">${totP}</div><div class="l">✅ Present</div></div>
+    <div class="sc sw"><div class="v">${totN}</div><div class="l">⚠️ Attention</div></div>
+    <div class="sc sf"><div class="v">${totM}</div><div class="l">❌ Missing</div></div>
+  </div>`:''}
+  ${sections}
+  <div class="ft"><div>${company.name||''} — O&amp;M Manual Index — Confidential</div><div>${printDate}${projNum?' · Job #'+projNum:''}</div></div>
+  </body></html>`;
+}
+
+function exportPDF(){
+  const frame=document.getElementById('print-frame');
+  frame.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;border:none;z-index:9999;background:white;';
+  const doc=frame.contentDocument||frame.contentWindow.document;
+  doc.open();doc.write(buildReportHTML());doc.close();
+  setTimeout(()=>{frame.contentWindow.focus();frame.contentWindow.print();setTimeout(()=>{frame.style.cssText='position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';},1200);},700);
+}
+
+// ── OUTLOOK ───────────────────────────────────────────
+function openOutlook(){
+  const projName=document.getElementById('proj-name').value||'O&M Manual';
+  const projNum=document.getElementById('proj-number').value;
+  const engEmail=document.getElementById('proj-eng-email').value||'';
+  const dateStr=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+  const allR=Object.values(results);
+  const totP=allR.reduce((a,r)=>a+r.present,0),totN=allR.reduce((a,r)=>a+r.notes_cnt,0),totM=allR.reduce((a,r)=>a+r.missing,0);
+
+  let tabLines='';
+  tabs.forEach((t,i)=>{const r=results[t.id];if(!r)return;tabLines+=`  Tab ${i+1} — ${t.name}: ✅ ${r.present}  ⚠️ ${r.notes_cnt}  ❌ ${r.missing}\n`;});
+
+  const subject=`O&M Manual Submission — ${projName}${projNum?' (Job #'+projNum+')':''}`;
+  const body=`Hello,
+
+Please find our Operations & Maintenance Manual completeness review for the following project.
+
+PROJECT:     ${projName}${projNum?' | Job #'+projNum:''}
+DATE:        ${dateStr}
+PREPARED BY: ${company.preparedby||company.name||''}
+
+MANUAL INDEX — COMPLETENESS SUMMARY
+────────────────────────────────────────────
+${tabLines}────────────────────────────────────────────
+TOTAL: ✅ ${totP} Present  ⚠️ ${totN} Attention  ❌ ${totM} Missing
+────────────────────────────────────────────
+${totM>0?`\nIMPORTANT: ${totM} required item(s) are missing from the submitted package.\n`:''}
+The complete indexed report is attached as a PDF.
+
+${company.name?company.name+'\n':''}${company.phone?'Tel: '+company.phone+'\n':''}${company.email?company.email:''}`.trim();
+
+  window.location.href=`mailto:${encodeURIComponent(engEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// ── API KEY ───────────────────────────────────────────
+const API_URL = '/functions/anthropic-proxy';
+function getApiKey(){ return ''; } // Key lives in Cloudflare env, not here
+
+// ── INIT ──────────────────────────────────────────────
+loadSettings();
+if(!localStorage.getItem('om_co_v2')){
+  setTimeout(()=>{if(confirm('Set up your company info? Takes 30 seconds and appears on every report.'))openModal();},900);
+}
+</script>
+</body>
+</html>
