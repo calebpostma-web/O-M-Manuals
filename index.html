@@ -17,6 +17,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+
 /* HEADER */
 header{background:var(--ink);color:var(--paper);padding:0 28px;display:flex;align-items:stretch;gap:0;border-bottom:3px solid var(--accent);position:sticky;top:0;z-index:200;}
 .hbrand{display:flex;align-items:center;gap:12px;padding:13px 20px 13px 0;border-right:1px solid rgba(255,255,255,.1);margin-right:20px;}
@@ -31,13 +32,16 @@ header{background:var(--ink);color:var(--paper);padding:0 28px;display:flex;alig
 .hright{display:flex;align-items:center;gap:8px;padding-left:16px;border-left:1px solid rgba(255,255,255,.1);}
 .hbtn{padding:5px 12px;border-radius:4px;font-family:var(--sans);font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;border:1px solid rgba(255,255,255,.2);background:none;color:rgba(245,242,235,.7);}
 .hbtn:hover{border-color:rgba(255,255,255,.5);color:var(--paper);}
+
 /* LAYOUT */
 main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65px);overflow:hidden;}
+
 /* SIDEBAR */
 .sidebar{background:var(--surface);border-right:1px solid var(--rule);display:flex;flex-direction:column;overflow-y:auto;}
 .ss{padding:14px 15px;border-bottom:1px solid var(--rule);}
 .slbl{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px;}
 .slbl::after{content:'';flex:1;height:1px;background:var(--rule);}
+
 /* DROP ZONES */
 .dz{border:1.5px dashed var(--rule);border-radius:var(--radius);padding:13px 10px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:#faf9f6;}
 .dz:hover,.dz.dragover{border-color:var(--accent2);background:#eff5ff;}
@@ -46,6 +50,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .dz .di{font-size:18px;margin-bottom:3px;}
 .dz .dl{font-size:11px;font-weight:600;margin-bottom:2px;}
 .dz .ds{font-size:10px;color:var(--muted);}
+
 /* FILE LIST */
 .flist{margin-top:7px;display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto;}
 .fi{display:flex;align-items:center;gap:5px;background:#faf9f6;border:1px solid var(--rule);border-radius:3px;padding:5px 7px;}
@@ -55,12 +60,14 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .fi .frm:hover{color:var(--accent);}
 .fi.spec-fi{border-color:rgba(37,99,168,.2);}
 .fi.doc-fi{border-color:rgba(184,134,11,.2);}
+
 /* SIZE METER */
 .smeter{margin-top:7px;}
 .srow{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;}
 .srow span:last-child{font-family:var(--mono);}
 .sbwrap{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;}
 .sbar{height:100%;border-radius:2px;transition:width .3s,background .3s;background:var(--success);}
+
 /* MAIN BUTTONS */
 .build-btn{width:100%;padding:11px;background:var(--ink);border:none;border-radius:var(--radius);color:var(--paper);font-family:var(--serif);font-size:13.5px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px;}
 .build-btn:hover{background:#2d2d4e;}
@@ -70,6 +77,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .run-btn:disabled{background:var(--rule);color:var(--muted);cursor:not-allowed;}
 .ghost-btn{width:100%;padding:8px;background:none;border:1px solid var(--rule);border-radius:var(--radius);color:var(--muted);font-family:var(--sans);font-size:11px;cursor:pointer;transition:all .2s;margin-top:6px;}
 .ghost-btn:hover{border-color:var(--accent);color:var(--accent);}
+
 /* TAB PREVIEW LIST */
 .tab-preview-list{display:flex;flex-direction:column;gap:4px;}
 .tp-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#faf9f6;border:1px solid var(--rule);border-radius:var(--radius);}
@@ -81,8 +89,10 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .tp-del:hover{color:var(--accent);}
 .add-tab-btn{width:100%;padding:7px;background:none;border:1.5px dashed var(--rule);border-radius:var(--radius);color:var(--muted);font-family:var(--sans);font-size:11px;cursor:pointer;transition:all .2s;margin-top:4px;}
 .add-tab-btn:hover{border-color:var(--ink);color:var(--ink);}
+
 /* CONTENT */
 .content{display:flex;flex-direction:column;overflow-y:auto;padding:26px 30px;gap:16px;background:var(--paper);}
+
 /* EMPTY STATE */
 .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:60px;}
 .erule{width:40px;height:3px;background:var(--accent);margin:0 auto;}
@@ -91,6 +101,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .esteps{display:flex;gap:22px;margin-top:6px;flex-wrap:wrap;justify-content:center;}
 .estep .en{width:26px;height:26px;border:2px solid var(--rule);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:12px;color:var(--muted);margin:0 auto 5px;}
 .estep .el{font-size:10.5px;color:var(--muted);}
+
 /* PHASE BANNER */
 .phase-banner{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:12px;}
 .spinner{width:11px;height:11px;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
@@ -99,6 +110,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .phase-hint{font-size:10.5px;color:var(--muted);font-family:var(--mono);}
 .pwrap{height:2px;background:var(--rule);border-radius:1px;overflow:hidden;margin-top:7px;}
 .pbar{height:100%;background:var(--accent);border-radius:1px;transition:width .5s ease;}
+
 /* SUMMARY */
 .sumrow{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
 .sc{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);padding:13px 15px;}
@@ -107,6 +119,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .sc-ok{border-color:rgba(26,107,60,.3);}.sc-ok .sv{color:var(--success);}
 .sc-warn{border-color:rgba(180,83,9,.3);}.sc-warn .sv{color:var(--warn);}
 .sc-miss{border-color:rgba(200,57,43,.3);}.sc-miss .sv{color:var(--accent);}
+
 /* ACTION BAR */
 .abar{display:flex;gap:8px;flex-wrap:wrap;}
 .abtn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .18s;}
@@ -115,11 +128,13 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .ab-email{background:var(--accent2);color:white;}
 .ab-ghost{background:var(--surface);color:var(--muted);border:1px solid var(--rule);}
 .ab-ghost:hover{border-color:var(--accent);color:var(--accent);}
+
 /* MANUAL STRUCTURE */
 .ms{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;}
 .ms-hdr{padding:11px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--paper);}
 .ms-hdr h3{font-family:var(--serif);font-size:13.5px;font-weight:700;}
 .ms-hdr .mssub{font-size:10.5px;color:rgba(245,242,235,.45);margin-left:auto;font-family:var(--mono);}
+
 /* SECTION RESULTS */
 .sr{border-bottom:1px solid var(--rule);}
 .sr:last-child{border-bottom:none;}
@@ -135,6 +150,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .srb-info{background:rgba(37,99,168,.1);color:var(--accent2);}
 .sr-body{padding:13px 18px 15px;display:none;border-top:1px solid var(--rule);background:#faf9f6;}
 .sr-body.open{display:block;}
+
 /* CHECK ITEMS */
 .ci{display:flex;gap:9px;padding:7px 11px;border-radius:3px;margin-bottom:5px;border:1px solid transparent;align-items:flex-start;}
 .ci-ok{background:rgba(26,107,60,.04);border-color:rgba(26,107,60,.14);}
@@ -148,22 +164,6 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .tt-miss{background:rgba(200,57,43,.12);color:var(--accent);}
 .tt-info{background:rgba(37,99,168,.1);color:var(--accent2);}
 .ci-detail{font-size:11.5px;color:var(--muted);line-height:1.5;}
-
-/* ── FILE SORT (drag-to-reorder within section) ─────── */
-.fs-list{display:flex;flex-direction:column;gap:3px;}
-.fs-item{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--surface);border:1px solid var(--rule);border-radius:3px;cursor:grab;transition:border-color .15s,background .15s,opacity .15s;user-select:none;}
-.fs-item:active{cursor:grabbing;}
-.fs-item.dragging{opacity:.35;border-style:dashed;}
-.fs-item.drag-over{border-color:var(--accent2);background:#eff5ff;}
-.drag-handle{color:#c8c3ba;font-size:15px;cursor:grab;flex-shrink:0;line-height:1;}
-.fs-pos{width:18px;height:18px;background:var(--rule);border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8.5px;color:var(--muted);flex-shrink:0;}
-.fs-name{flex:1;font-family:var(--mono);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
-.fs-size{font-size:9px;color:var(--muted);white-space:nowrap;font-family:var(--mono);}
-.fs-hint{font-size:9.5px;color:var(--muted);margin-top:5px;font-style:italic;}
-/* section file sub-header */
-.sec-file-lbl{font-size:8.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:6px;}
-.sec-file-lbl::after{content:'';flex:1;height:1px;background:var(--rule);}
-.sec-divider{border:none;border-top:1px solid var(--rule);margin:10px 0;}
 
 /* MODAL */
 .mo{position:fixed;inset:0;background:rgba(26,26,46,.65);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -185,10 +185,12 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
 .btn-save:hover{background:var(--accent);}
 .btn-cancel{padding:8px 14px;background:none;border:1px solid var(--rule);border-radius:4px;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer;}
 .btn-cancel:hover{border-color:var(--accent);color:var(--accent);}
+
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:2px;}
 </style>
 </head>
 <body>
+
 <!-- COMPANY MODAL -->
 <div class="mo hidden" id="co-modal">
   <div class="modal">
@@ -213,6 +215,7 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
     </div>
   </div>
 </div>
+
 <!-- HEADER -->
 <header>
   <div class="hbrand">
@@ -231,8 +234,10 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
     <button class="hbtn" onclick="openModal()">⚙ Company</button>
   </div>
 </header>
+
 <main>
   <aside class="sidebar">
+
     <!-- Spec -->
     <div class="ss">
       <div class="slbl">Engineer Spec</div>
@@ -240,10 +245,11 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
         <input type="file" id="spec-input" multiple accept=".pdf,.doc,.docx,.txt">
         <div class="di">📋</div>
         <div class="dl">Drop spec file(s)</div>
-        <div class="ds">Sets required manual structure</div>
+        <div class="ds">Optional — C+B Standard used by default</div>
       </div>
       <div class="flist" id="spec-list"></div>
     </div>
+
     <!-- All Documents -->
     <div class="ss">
       <div class="slbl">All Project Documents</div>
@@ -260,18 +266,21 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
         <div id="size-hint" style="font-size:9.5px;color:var(--muted);margin-top:4px;">First 1–2 pages read per file. Large packages are fine.</div>
       </div>
     </div>
+
     <!-- Step 1: Build Tabs -->
     <div class="ss">
       <div class="slbl">Step 1 — Build Index</div>
       <button class="build-btn" id="build-btn" disabled onclick="buildIndex()">🤖 Auto-Build Manual Index</button>
       <div style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.6;">AI reads the first page of each file, identifies what it is, and automatically builds the tab structure for this project.</div>
     </div>
+
     <!-- Tab Preview (shown after build) -->
     <div class="ss hidden" id="tabs-section">
       <div class="slbl">Manual Sections</div>
       <div class="tab-preview-list" id="tab-preview-list"></div>
       <button class="add-tab-btn" onclick="addTab()">+ Add Section</button>
     </div>
+
     <!-- Step 2: Full Review -->
     <div class="ss hidden" id="review-section" style="border-bottom:none;">
       <div class="slbl">Step 2 — Review</div>
@@ -281,7 +290,9 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
         <strong style="color:var(--success);">🔒 No server storage.</strong> Files stay in your browser only.
       </div>
     </div>
+
   </aside>
+
   <div class="content" id="content">
     <div class="empty-state" id="empty-state">
       <div class="erule"></div>
@@ -297,17 +308,66 @@ main{flex:1;display:grid;grid-template-columns:290px 1fr;height:calc(100vh - 65p
     </div>
   </div>
 </main>
+
 <iframe id="print-frame" style="position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;"></iframe>
+
 <script>
+
+// ── CB MANUALS DEFAULT SPEC ───────────────────────────
+// Embedded from C+B Project 9708, Section 21 05 01 - Common Work Results for Mechanical
+// Used as default when no engineer spec is uploaded
+const CB_MANUALS_SPEC = `OPERATIONS AND MAINTENANCE MANUAL REQUIREMENTS
+Source: Section 21 05 01 - Common Work Results for Mechanical (C+B Engineering Standard)
+
+1. GENERAL SECTION (at front of every manual):
+   - Comprehensive list of names, addresses, telephone numbers of Consultants, General Contractor, Mechanical Contractor, and all mechanical subcontractors
+   - Mechanical Contractor's Letter of Warranty (1 year minimum on workmanship from substantial completion)
+   - Copy of all equipment extended warranties
+   - Valve directory (valve number, location, normal position, purpose)
+   - Copy of all natural gas fitter tags (if applicable)
+   - Copy of owner's asset tag information form for all equipment
+
+2. EACH EQUIPMENT SECTION must include (as applicable):
+   - Equipment data sheets / cut sheets
+   - Installation instructions
+   - Operating instructions
+   - Maintenance instructions
+   - Preventive maintenance schedule (daily, weekly, monthly, semi-annual, annual) — must be purpose-written, NOT manufacturer shop drawings
+   - Lubrication information and bearing procedures
+   - Pressure test results and operational tests
+   - Leakage tests for duct systems
+   - Startup reports and commissioning certificates
+   - Equipment warranty documentation
+   - Copy of approved shop drawings
+   - Supplier name, address, and telephone number
+   - Air filter sizes, quantities, and types with unit designations
+
+3. CONTROLS SECTION must include:
+   - As-Built control diagrams and drawings
+   - Wiring diagrams
+   - Points lists
+   - Final control sequences and system function descriptions
+   - All commissioning, checkout, and test reports
+
+4. TESTING & BALANCING:
+   - Complete Testing and Balancing (TAB) report
+   - Air balance report with all unit designations
+
+5. AS-BUILT DRAWINGS:
+   - Mechanical as-built drawing set
+   - Included at end of manual or as separate bound set
+
+6. FORMAT REQUIREMENTS:
+   - Electronic: Single PDF with bookmarks matching binder sections
+   - Hardcopy: Three ring binders with index pages, indexing tabs, cover identification front and side
+   - Three hardcopy sets + one electronic set (unless spec states otherwise)`;
+
 // ── STATE ─────────────────────────────────────────────
 let company={}, logoDataUrl=null;
 let specFiles=[], docFiles=[];
-let tabs=[]; // [{id,name,files:[],notes}]
+let tabs=[]; // [{id,name,files:[],order}]
 let results={}; // tabId -> parsed result
 let tabIdCounter=0;
-
-// ── DRAG-TO-REORDER STATE ─────────────────────────────
-let dragState={tabId:null,fromIdx:null};
 
 // ── SETTINGS ──────────────────────────────────────────
 function loadSettings(){
@@ -335,37 +395,15 @@ function handleLogoUpload(e){
 
 // ── FILE HELPERS ──────────────────────────────────────
 const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+const toB64Trimmed=f=>new Promise((res,rej)=>{const LIMIT=150*1024;const blob=f.size>LIMIT?f.slice(0,LIMIT):f;const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
 const toText=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(f);});
-
-// ── AI FILE SIZE LIMIT ────────────────────────────────
-// Anthropic's API rejects documents over ~4.5 MB (base64). We cap at 3 MB
-// raw so there's headroom. For large PDFs we send just the first 3 MB of
-// bytes — enough to cover the first several pages for identification.
-const MAX_PDF_BYTES = 3 * 1024 * 1024; // 3 MB
-
-// Returns a content block (document / image / text) safe for the API.
-async function aiFilePart(f) {
-  const ext = f.name.split('.').pop().toLowerCase();
-  if (ext === 'pdf') {
-    const blob = f.size > MAX_PDF_BYTES ? f.slice(0, MAX_PDF_BYTES) : f;
-    try {
-      const data = await toB64(blob);
-      return { type:'document', source:{ type:'base64', media_type:'application/pdf', data } };
-    } catch {
-      return { type:'text', text:`[PDF unreadable — ${fmtSz(f.size)}]` };
-    }
-  }
-  if (['png','jpg','jpeg'].includes(ext)) {
-    try { return { type:'image', source:{ type:'base64', media_type: ext==='jpg'?'image/jpeg':`image/${ext}`, data: await toB64(f) } }; }
-    catch { return { type:'text', text:`[Image unreadable — ${fmtSz(f.size)}]` }; }
-  }
-  try { return { type:'text', text:(await toText(f)).slice(0,1500) }; }
-  catch { return { type:'text', text:'[Could not read]' }; }
-}
 function fmtSz(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
 function fIcon(n){const e=n.split('.').pop().toLowerCase();return e==='pdf'?'📄':['doc','docx'].includes(e)?'📝':['xls','xlsx','csv'].includes(e)?'📊':['png','jpg','jpeg'].includes(e)?'🖼️':'📁';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function totalBytes(){return specFiles.reduce((a,f)=>a+f.size,0)+docFiles.reduce((a,f)=>a+f.size,0);}
+
+function totalBytes(){
+  return specFiles.reduce((a,f)=>a+f.size,0)+docFiles.reduce((a,f)=>a+f.size,0);
+}
 function updateSizeMeter(){
   const mb=totalBytes()/1048576,pct=Math.min(100,(mb/150)*100);
   const bar=document.getElementById('size-bar'),txt=document.getElementById('size-txt'),badge=document.getElementById('size-badge'),hint=document.getElementById('size-hint');
@@ -380,7 +418,7 @@ function checkBuildReady(){
   if(btn) btn.disabled=docFiles.length===0;
 }
 
-// ── RENDER FILE LISTS (sidebar) ───────────────────────
+// ── RENDER FILE LISTS ─────────────────────────────────
 function renderSpecList(){
   const c=document.getElementById('spec-list');c.innerHTML='';
   specFiles.forEach((f,i)=>{
@@ -391,19 +429,19 @@ function renderSpecList(){
   updateSizeMeter();
 }
 function rmSpec(i){specFiles.splice(i,1);renderSpecList();}
+
 function renderDocList(){
   const c=document.getElementById('doc-list');c.innerHTML='';
   docFiles.forEach((f,i)=>{
-    const big=f.size>MAX_PDF_BYTES;
     const el=document.createElement('div');el.className='fi doc-fi';
-    el.innerHTML=`<span style="font-size:11px">${fIcon(f.name)}</span><span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>${big?`<span class="fsz" title="First 3 MB will be sent to AI" style="color:var(--warn)">✂ ${fmtSz(f.size)}</span>`:`<span class="fsz">${fmtSz(f.size)}</span>`}<button class="frm" onclick="rmDoc(${i})">×</button>`;
+    el.innerHTML=`<span style="font-size:11px">${fIcon(f.name)}</span><span class="fn" title="${esc(f.name)}">${esc(f.name)}</span><span class="fsz">${fmtSz(f.size)}</span><button class="frm" onclick="rmDoc(${i})">×</button>`;
     c.appendChild(el);
   });
   updateSizeMeter();
 }
 function rmDoc(i){docFiles.splice(i,1);renderDocList();tabs=[];results={};hideSections();}
 
-// ── DRAG & DROP SETUP (file upload zones) ─────────────
+// ── DRAG & DROP SETUP ─────────────────────────────────
 function setupDrop(zoneId,handler){
   const z=document.getElementById(zoneId);
   z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('dragover');});
@@ -415,65 +453,11 @@ document.getElementById('doc-input').addEventListener('change',e=>{docFiles=[...
 setupDrop('spec-zone',fl=>{specFiles=[...specFiles,...Array.from(fl)];renderSpecList();});
 setupDrop('doc-zone',fl=>{docFiles=[...docFiles,...Array.from(fl)];renderDocList();});
 
-// ── WITHIN-SECTION FILE REORDER ───────────────────────
-// Renders a sortable file list for a tab.
-// Each item has a drag handle; files can be dragged to reorder within the same tab.
-function renderFileList(tab){
-  if(!tab.files||tab.files.length===0) return `<div style="font-size:11px;color:var(--muted);font-style:italic;">No files assigned to this section.</div>`;
-  const showHint = tab.files.length > 1;
-  let rows = tab.files.map((f,fi)=>`
-    <div class="fs-item"
-         draggable="true"
-         ondragstart="dStart(event,${tab.id},${fi})"
-         ondragend="dEnd(event)"
-         ondragover="dOver(event,${tab.id},${fi})"
-         ondrop="dDrop(event,${tab.id},${fi})"
-         title="Drag to reorder">
-      <span class="drag-handle">⠿</span>
-      <span class="fs-pos">${fi+1}</span>
-      <span style="font-size:11px;flex-shrink:0;">${fIcon(f.name)}</span>
-      <span class="fs-name" title="${esc(f.name)}">${esc(f.name)}</span>
-      <span class="fs-size">${fmtSz(f.size)}</span>
-    </div>`).join('');
-  return `<div class="fs-list" id="fsl-${tab.id}">${rows}</div>${showHint?`<div class="fs-hint">⠿ Drag rows to set document order within this tab</div>`:''}`;
-}
-
-// Drag handlers — reorder within tab only
-function dStart(e,tabId,fromIdx){
-  dragState={tabId,fromIdx};
-  e.dataTransfer.effectAllowed='move';
-  // slight delay so the ghost image captures the non-faded state
-  setTimeout(()=>{const el=e.target.closest('.fs-item');if(el)el.classList.add('dragging');},0);
-}
-function dEnd(e){
-  const el=e.target.closest('.fs-item');if(el)el.classList.remove('dragging');
-  document.querySelectorAll('.fs-item.drag-over').forEach(x=>x.classList.remove('drag-over'));
-}
-function dOver(e,tabId,toIdx){
-  e.preventDefault();
-  if(dragState.tabId!==tabId)return; // no cross-tab dragging
-  e.dataTransfer.dropEffect='move';
-  document.querySelectorAll('.fs-item.drag-over').forEach(x=>x.classList.remove('drag-over'));
-  const el=e.target.closest('.fs-item');if(el)el.classList.add('drag-over');
-}
-function dDrop(e,tabId,toIdx){
-  e.preventDefault();
-  document.querySelectorAll('.fs-item.drag-over').forEach(x=>x.classList.remove('drag-over'));
-  if(dragState.tabId!==tabId||dragState.fromIdx===toIdx)return;
-  const tab=tabs.find(t=>t.id===tabId);if(!tab)return;
-  const files=[...tab.files];
-  const [moved]=files.splice(dragState.fromIdx,1);
-  files.splice(toIdx,0,moved);
-  tab.files=files;
-  // re-render whichever view is active
-  if(Object.keys(results).length>0){renderFinalResults();}
-  else{renderIndexPreview(window._lastParsed||{});}
-}
-
 // ── TABS ──────────────────────────────────────────────
 function addTab(name){
   const t={id:++tabIdCounter,name:name||'New Section',files:[]};
-  tabs.push(t);renderTabPreview();
+  tabs.push(t);
+  renderTabPreview();
 }
 function removeTab(id){tabs=tabs.filter(t=>t.id!==id);delete results[id];renderTabPreview();}
 function renderTabPreview(){
@@ -496,56 +480,75 @@ function hideSections(){
 // ── PHASE 1: AUTO-BUILD INDEX ─────────────────────────
 async function buildIndex(){
   const btn=document.getElementById('build-btn');
-  btn.disabled=true;btn.textContent='Reading files…';
+  btn.disabled=true; btn.textContent='Reading files…';
   setContent(`<div class="phase-banner"><div class="spinner"></div><div style="flex:1"><div class="phase-txt">Reading first pages of ${docFiles.length} file${docFiles.length!==1?'s':''}…</div><div class="pwrap"><div class="pbar" style="width:30%"></div></div></div><div class="phase-hint">${docFiles.length} documents</div></div>`);
-  try{
+
+  try {
+    // Build file inventory for Claude — just names, sizes, and first-page content
     const parts=[];
     const projName=document.getElementById('proj-name').value||'this project';
+
     parts.push({type:'text',text:`You are assembling an Operations and Maintenance Manual for a mechanical HVAC project.
 Project: ${projName}
+
 You have been given a collection of documents uploaded by the contractor. Your job is to:
 1. Identify what EACH file is (one sentence max per file)
 2. Group them into logical MANUAL SECTIONS / TABS — exactly like a physical O&M binder
-3. Within each section, suggest the best document order (e.g. data sheet first, then IOM, then warranty)
-4. Return a structured JSON response ONLY — no other text
+3. Return a structured JSON response ONLY — no other text
+
 The manual should follow this general structure (adapt based on what's actually present):
 - Cover / Title Page
-- General Section (substantial completion letter, contractor warranty letter, contact lists)
+- General Section (substantial completion letter, contractor warranty letter, contact lists)  
 - One section per major piece of equipment (e.g. "York Rooftop Unit", "Captive Aire Exhaust Fans")
-- Each equipment section contains: IOM manual, data sheet, warranty, startup/commissioning report
+- Each equipment section contains: IOM manual, data sheet, warranty, startup report
 - Testing & Balancing / Air Balance Report (its own tab)
 - Fire suppression / balloon test reports (own tab if present)
 - Mechanical As-Built Drawings (last tab)
+
 Return ONLY valid JSON in this exact format:
 {
   "sections": [
     {
       "name": "Tab name (manufacturer + equipment type, e.g. 'York — Rooftop Air Conditioner')",
       "files": ["filename1.pdf", "filename2.pdf"],
-      "fileOrder": ["filename1.pdf", "filename2.pdf"],
       "notes": "Brief note about what's in this section"
     }
   ],
   "unassigned": ["filename.pdf"],
   "missing": ["Description of required item not found in uploaded files"]
 }
+
 Rules:
 - Section names should match how a physical binder tab would be labelled
 - Every uploaded file must appear in exactly one section OR in unassigned
-- fileOrder must list the files in the recommended reading/binding order for that section
 - If a file could belong to multiple sections, put it in the most specific one
 - unassigned = files you couldn't confidently identify
 - missing = items the spec requires that were NOT uploaded`});
+
+    // Add spec — use uploaded spec or fall back to embedded CB Manuals standard
     if(specFiles.length>0){
-      parts.push({type:'text',text:`\n\n=== ENGINEER SPECIFICATION (defines what the manual must contain) ===`});
-      for(const f of specFiles){ parts.push(await aiFilePart(f)); }
+      parts.push({type:'text',text:`\n\n=== ENGINEER SPECIFICATION (uploaded — takes precedence) ===`});
+      for(const f of specFiles){
+        const ext=f.name.split('.').pop().toLowerCase();
+        if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64Trimmed(f)}});}
+        else{try{parts.push({type:'text',text:(await toText(f)).slice(0,3000)});}catch{}}
+      }
+    } else {
+      parts.push({type:'text',text:`\n\n=== SPECIFICATION (C+B Engineering Standard — used when no spec uploaded) ===\n${CB_MANUALS_SPEC}`});
     }
+
+    // Add each doc — first page only
     parts.push({type:'text',text:`\n\n=== UPLOADED DOCUMENTS (skim first 1-2 pages only to identify each one) ===`});
     for(const f of docFiles){
-      parts.push({type:'text',text:`\n--- FILE: ${f.name} (${fmtSz(f.size)})${f.size>MAX_PDF_BYTES?' [first 3 MB sent]':''} ---`});
-      parts.push(await aiFilePart(f));
+      const ext=f.name.split('.').pop().toLowerCase();
+      parts.push({type:'text',text:`\n--- FILE: ${f.name} (${fmtSz(f.size)}) ---`});
+      if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64Trimmed(f)}});}
+      else if(['png','jpg','jpeg'].includes(ext)){const b=await toB64(f);parts.push({type:'image',source:{type:'base64',media_type:ext==='jpg'?'image/jpeg':`image/${ext}`,data:b}});}
+      else{try{parts.push({type:'text',text:(await toText(f)).slice(0,1500)});}catch{parts.push({type:'text',text:'[Could not read]'});}}
     }
+
     setContent(`<div class="phase-banner"><div class="spinner"></div><div style="flex:1"><div class="phase-txt">AI is identifying documents and building manual structure…</div><div class="pwrap"><div class="pbar" style="width:65%"></div></div></div></div>`);
+
     const resp=await fetch(API_URL,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:parts}]})
@@ -553,46 +556,45 @@ Rules:
     if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||`API error ${resp.status}`);}
     const data=await resp.json();
     const raw=data.content.map(b=>b.text||'').join('').trim();
+
+    // Parse JSON — strip any markdown fences
     const jsonStr=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
     const parsed=JSON.parse(jsonStr);
-    // Build tabs — respect AI-suggested fileOrder within each section
-    tabs=[];tabIdCounter=0;
-    if(parsed.sections&&Array.isArray(parsed.sections)){
+
+    // Build tabs from AI response
+    tabs=[];
+    tabIdCounter=0;
+    if(parsed.sections && Array.isArray(parsed.sections)){
       parsed.sections.forEach(sec=>{
         const id=++tabIdCounter;
-        // Use fileOrder if provided, otherwise fall back to files array
-        const orderList=sec.fileOrder&&sec.fileOrder.length?sec.fileOrder:sec.files||[];
-        // Match File objects by name, in the AI's suggested order
-        const orderedFiles=[];
-        orderList.forEach(name=>{
-          const f=docFiles.find(df=>df.name===name||df.name.includes(name)||name.includes(df.name));
-          if(f&&!orderedFiles.includes(f))orderedFiles.push(f);
-        });
-        // Append any matched files not in the order list (safety net)
-        const allMatched=docFiles.filter(f=>sec.files&&sec.files.some(n=>n===f.name||f.name.includes(n)||n.includes(f.name)));
-        allMatched.forEach(f=>{if(!orderedFiles.includes(f))orderedFiles.push(f);});
-        tabs.push({id,name:sec.name,files:orderedFiles,notes:sec.notes||''});
+        const matchedFiles=docFiles.filter(f=>sec.files && sec.files.some(n=>n===f.name||f.name.includes(n)||n.includes(f.name)));
+        tabs.push({id,name:sec.name,files:matchedFiles,notes:sec.notes||''});
       });
     }
-    // Unassigned files get their own section
+
+    // Any unassigned files get their own section
     const assignedNames=new Set(tabs.flatMap(t=>t.files.map(f=>f.name)));
     const unassigned=docFiles.filter(f=>!assignedNames.has(f.name));
-    if(unassigned.length>0){tabs.push({id:++tabIdCounter,name:'Unassigned Documents',files:unassigned,notes:'Could not be automatically classified'});}
+    if(unassigned.length>0){
+      tabs.push({id:++tabIdCounter,name:'Unassigned Documents',files:unassigned,notes:'Could not be automatically classified'});
+    }
+
+    // Store missing items for later
     window._missing=parsed.missing||[];
-    renderTabPreview();showSections();renderIndexPreview(parsed);
-  }catch(err){
-    const hint=err.message.toLowerCase().includes('size')||err.message.toLowerCase().includes('large')
-      ?'One or more files exceeded the API size limit. Files over 3 MB are automatically trimmed to their first pages — if this persists, remove the largest files and try again.'
-      :err.message.toLowerCase().includes('api key')||err.message.includes('401')
-        ?'Check your API key configuration in Cloudflare and try again.'
-        :'If this keeps happening, try removing the largest files first.';
-    setContent(`<div class="phase-banner" style="border-color:var(--accent)"><div style="font-size:16px;flex-shrink:0;">❌</div><div><div class="phase-txt" style="color:var(--accent)">Error: ${esc(err.message)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${hint}</div></div></div>`);
+
+    renderTabPreview();
+    showSections();
+    renderIndexPreview(parsed);
+
+  } catch(err){
+    setContent(`<div class="phase-banner" style="border-color:var(--accent)"><div style="font-size:16px;flex-shrink:0;">❌</div><div><div class="phase-txt" style="color:var(--accent)">Error: ${esc(err.message)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">Check your API key configuration and try again.</div></div></div>`);
   }
-  btn.disabled=false;btn.textContent='🤖 Auto-Build Manual Index';checkBuildReady();
+
+  btn.disabled=false;btn.textContent='🤖 Auto-Build Manual Index';
+  checkBuildReady();
 }
 
 function renderIndexPreview(parsed){
-  window._lastParsed=parsed;
   const projName=document.getElementById('proj-name').value||'O&M Manual';
   let html=`
     <div class="abar" style="margin-bottom:4px;">
@@ -602,20 +604,9 @@ function renderIndexPreview(parsed){
     </div>
     <div class="ms">
       <div class="ms-hdr"><h3>${esc(projName)} — Proposed Manual Index</h3><span class="mssub">${tabs.length} sections · ${docFiles.length} files</span></div>`;
+
   tabs.forEach((t,i)=>{
     const r=results[t.id];
-    let bodyHtml;
-    if(r){
-      // After full review: show file order + AI review text
-      bodyHtml=`
-        <div class="sec-file-lbl">Document Order</div>
-        ${renderFileList(t)}
-        <hr class="sec-divider">
-        ${r.html}`;
-    } else {
-      // Index preview only: show draggable file list + notes
-      bodyHtml=renderFileList(t)+(t.notes?`<div style="font-size:11px;color:var(--muted);margin-top:7px;font-style:italic;">${esc(t.notes)}</div>`:'');
-    }
     html+=`
       <div class="sr">
         <div class="sr-hdr" onclick="toggleResult(${t.id})">
@@ -626,13 +617,18 @@ function renderIndexPreview(parsed){
             `<span class="srb srb-info">${t.files.length} file${t.files.length!==1?'s':''}</span>`}
           </div>
         </div>
-        <div class="sr-body ${r?'open':''}" id="srb-${t.id}">${bodyHtml}</div>
+        <div class="sr-body ${r?'open':''}" id="srb-${t.id}">
+          ${r?r.html:t.files.map(f=>`<div class="ci ci-info"><span class="ci-ic">📄</span><div><span class="ci-tag tt-info">FILE</span><div class="ci-detail">${esc(f.name)} — ${fmtSz(f.size)}</div></div></div>`).join('')+
+          (t.notes?`<div style="font-size:11px;color:var(--muted);margin-top:6px;font-style:italic;">${esc(t.notes)}</div>`:'')}
+        </div>
       </div>`;
   });
-  if(window._missing&&window._missing.length>0){
+
+  if(window._missing && window._missing.length>0){
     html+=`<div class="sr"><div class="sr-hdr"><div class="sr-num" style="background:var(--accent);">!</div><span class="sr-name">Required Items Not Found</span><div class="sr-badges"><span class="srb srb-miss">❌ ${window._missing.length}</span></div></div><div class="sr-body open" id="srb-missing">${window._missing.map(m=>`<div class="ci ci-miss"><span class="ci-ic">❌</span><div><span class="ci-tag tt-miss">MISSING</span><div class="ci-detail">${esc(m)}</div></div></div>`).join('')}</div></div>`;
   }
-  html+=`</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Index built — drag files within each section to set order, then click Review &amp; Index Manual</div>`;
+
+  html+=`</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Index built — review sections above, then click Review &amp; Index Manual for full compliance check</div>`;
   setContent(html);
 }
 
@@ -641,48 +637,64 @@ async function runFullReview(){
   const btn=document.getElementById('run-btn');
   btn.disabled=true;btn.textContent='Reviewing…';
   results={};
+
   for(let i=0;i<tabs.length;i++){
-    const t=tabs[i];if(t.files.length===0)continue;
-    setPhaseProgress(`Reviewing section ${i+1} of ${tabs.length}: ${t.name}…`,Math.round(((i)/tabs.length)*100));
-    await reviewTab(t);renderIndexPreview({});
+    const t=tabs[i];
+    if(t.files.length===0)continue;
+    setPhaseProgress(`Reviewing section ${i+1} of ${tabs.length}: ${t.name}…`, Math.round(((i)/tabs.length)*100));
+    await reviewTab(t);
+    renderIndexPreview({});
   }
+
   renderFinalResults();
   btn.disabled=false;btn.textContent='Review & Index Manual';
 }
+
 async function reviewTab(tab){
   const parts=[];
   const projName=document.getElementById('proj-name').value||'this project';
-  // Pass files in the user-defined order
-  const orderedNames=tab.files.map((f,i)=>`${i+1}. ${f.name}`).join('\n');
+
   parts.push({type:'text',text:`You are reviewing one section of an Operations & Maintenance Manual.
 Project: ${projName}
 Section: "${tab.name}"
-Document order set by contractor:
-${orderedNames}
+
 Review ONLY the files in this section. For each file:
 - Confirm what it is
-- Check it belongs in this section
+- Check it belongs in this section  
 - Identify if anything required is missing
-- Comment on the document order if it could be improved
+
 Use prefixes: ✅ PRESENT ⚠️ NOTE ❌ MISSING ℹ️ INFO
+
 Required items per section (as applicable): equipment data sheet, IOM manual, warranty, startup/commissioning report, maintenance schedule, supplier contacts, approved shop drawings.
+
 STRUCTURE:
 ## ${tab.name.toUpperCase()}
 ## DOCUMENTS IN THIS SECTION
 (one line per file — prefix + what it is + any concern)
 ## SECTION COMPLETENESS
 ## MISSING ITEMS
-## DOCUMENT ORDER NOTE
-(confirm order is correct or suggest improvement)`});
+## RECOMMENDED DOCUMENT ORDER
+(numbered list)`});
+
   if(specFiles.length>0){
-    parts.push({type:'text',text:`\n\n=== SPEC (applicable requirements) ===`});
-    for(const f of specFiles){ parts.push(await aiFilePart(f)); }
+    parts.push({type:'text',text:`\n\n=== ENGINEER SPECIFICATION (uploaded) ===`});
+    for(const f of specFiles){
+      const ext=f.name.split('.').pop().toLowerCase();
+      if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64Trimmed(f)}});}
+      else{try{parts.push({type:'text',text:(await toText(f)).slice(0,2000)});}catch{}}
+    }
+  } else {
+    parts.push({type:'text',text:`\n\n=== SPECIFICATION (C+B Engineering Standard — Default) ===\n${CB_MANUALS_SPEC}`});
   }
-  // Send files in current (user-defined) order
+
   for(const f of tab.files){
-    parts.push({type:'text',text:`\n\n=== ${f.name} (${fmtSz(f.size)})${f.size>MAX_PDF_BYTES?' [first 3 MB sent]':''} — skim first 1-2 pages only ===`});
-    parts.push(await aiFilePart(f));
+    const ext=f.name.split('.').pop().toLowerCase();
+    parts.push({type:'text',text:`\n\n=== ${f.name} (${fmtSz(f.size)}) — skim first 1-2 pages only ===`});
+    if(ext==='pdf'){parts.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:await toB64Trimmed(f)}});}
+    else if(['png','jpg','jpeg'].includes(ext)){const b=await toB64(f);parts.push({type:'image',source:{type:'base64',media_type:ext==='jpg'?'image/jpeg':`image/${ext}`,data:b}});}
+    else{try{parts.push({type:'text',text:(await toText(f)).slice(0,1500)});}catch{}}
   }
+
   try{
     const resp=await fetch(API_URL,{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -696,6 +708,7 @@ STRUCTURE:
     results[tab.id]={present:0,notes_cnt:0,missing:0,html:`<div class="ci ci-miss"><div><span class="ci-tag tt-miss">ERROR</span><div class="ci-detail">${esc(err.message)}</div></div></div>`,text:''};
   }
 }
+
 function setPhaseProgress(msg,pct){
   setContent(`<div class="phase-banner"><div class="spinner"></div><div style="flex:1"><div class="phase-txt">${esc(msg)}</div><div class="pwrap"><div class="pbar" style="width:${pct}%"></div></div></div></div>`);
 }
@@ -727,6 +740,7 @@ function renderFinalResults(){
   const projName=document.getElementById('proj-name').value||'O&M Manual';
   const projNum=document.getElementById('proj-number').value;
   const dateStr=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+
   let html=`
     <div class="abar">
       <button class="abtn ab-pdf" onclick="exportPDF()">📄 Export Indexed Report</button>
@@ -741,6 +755,7 @@ function renderFinalResults(){
     </div>
     <div class="ms">
       <div class="ms-hdr"><h3>${esc(projName)} — O&amp;M Manual Index</h3><span class="mssub">${projNum?'Job #'+projNum+' · ':''}${dateStr}</span></div>`;
+
   tabs.forEach((t,i)=>{
     const r=results[t.id];if(!r)return;
     html+=`
@@ -754,23 +769,20 @@ function renderFinalResults(){
             ${r.missing>0?`<span class="srb srb-miss">❌ ${r.missing}</span>`:''}
           </div>
         </div>
-        <div class="sr-body open" id="srb-${t.id}">
-          <div class="sec-file-lbl">Document Order</div>
-          ${renderFileList(t)}
-          <hr class="sec-divider">
-          ${r.html}
-        </div>
+        <div class="sr-body open" id="srb-${t.id}">${r.html}</div>
       </div>`;
   });
-  html+=`</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Review complete — drag files to adjust order before exporting · No files saved to server</div>`;
+
+  html+=`</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Review complete · No files saved to server · Clear session when done</div>`;
   setContent(html);
 }
+
 function toggleResult(id){const b=document.getElementById(`srb-${id}`);if(b)b.classList.toggle('open');}
 function setContent(html){document.getElementById('content').innerHTML=html;}
 
 // ── CLEAR ─────────────────────────────────────────────
 function clearAll(){
-  specFiles=[];docFiles=[];tabs=[];results=[];window._missing=[];window._lastParsed={};
+  specFiles=[];docFiles=[];tabs=[];results=[];window._missing=[];
   renderSpecList();renderDocList();hideSections();
   document.getElementById('spec-input').value='';
   document.getElementById('doc-input').value='';
@@ -788,20 +800,13 @@ function buildReportHTML(){
   const allR=Object.values(results);
   const totP=allR.reduce((a,r)=>a+r.present,0),totN=allR.reduce((a,r)=>a+r.notes_cnt,0),totM=allR.reduce((a,r)=>a+r.missing,0);
   const logoTag=logoDataUrl?`<img src="${logoDataUrl}" style="max-height:50px;max-width:180px;object-fit:contain;">`:`<div style="font-size:17pt;font-weight:700;color:#1a1a2e;font-family:Georgia,serif;">${company.name||''}</div>`;
+
   let sections='';
   tabs.forEach((t,i)=>{
     const r=results[t.id];
-    // Always render the file list in order
-    const fileListHtml=t.files.map((f,fi)=>`
-      <div style="display:flex;align-items:center;gap:7px;padding:4px 7px;border:1px solid #d4cfc4;border-radius:3px;margin-bottom:3px;background:#faf9f6;page-break-inside:avoid;">
-        <span style="width:16px;height:16px;background:#d4cfc4;border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:8pt;font-weight:700;color:#7a7567;flex-shrink:0;">${fi+1}</span>
-        <span style="font-size:9pt;color:#1a1a2e;flex:1;font-family:monospace;">${f.name}</span>
-        <span style="font-size:8pt;color:#7a7567;">${fmtSz(f.size)}</span>
-      </div>`).join('');
-    let body=`<div style="margin-bottom:8px;"><div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7a7567;margin-bottom:4px;">DOCUMENT ORDER</div>${fileListHtml}</div>`;
+    let body='';
     const text=r?r.text:'';
     if(text){
-      body+=`<hr style="border:none;border-top:1px solid #d4cfc4;margin:8px 0;">`;
       for(const line of text.split('\n')){
         const txt=line.trim();
         if(!txt){body+='<div style="height:3px"></div>';continue;}
@@ -811,7 +816,11 @@ function buildReportHTML(){
         for(const[em,s]of Object.entries(sm)){if(txt.startsWith(em)){body+=`<div style="display:flex;gap:7px;padding:5px 9px;border-radius:3px;margin-bottom:4px;border:1px solid ${s.bd};background:${s.bg};page-break-inside:avoid;"><span style="font-size:11pt;flex-shrink:0;">${em}</span><div><span style="display:inline-block;font-size:7pt;font-weight:700;letter-spacing:.5px;padding:1px 5px;border-radius:2px;background:${s.c}20;color:${s.c};margin-bottom:2px;">${s.lbl}</span><div style="font-size:9pt;color:#3a3632;line-height:1.5;">${txt.replace(new RegExp('^'+em+'\\s*'),'')}</div></div></div>`;matched=true;break;}}
         if(!matched&&!txt.startsWith('---'))body+=`<p style="font-size:9pt;color:#3a3632;margin:2px 0;">${txt}</p>`;
       }
+    } else {
+      // Index preview only (before full review)
+      t.files.forEach(f=>{body+=`<div style="font-size:9pt;color:#3a3632;padding:2px 0;">📄 ${f.name}</div>`;});
     }
+
     sections+=`
       <div style="margin-bottom:20px;page-break-inside:avoid;">
         <div style="display:flex;align-items:center;gap:9px;background:#1a1a2e;color:#f5f2eb;padding:7px 13px;border-radius:3px;margin-bottom:8px;">
@@ -822,6 +831,62 @@ function buildReportHTML(){
         ${body}
       </div>`;
   });
+
+  // Build table of contents for cover page
+  const tocLines = tabs.filter(t=>t.files.length>0||results[t.id]).map((t,i)=>`<tr><td style="padding:5px 8px;font-size:9pt;color:#1a1a2e;font-weight:600;font-family:Georgia,serif;">${i+1}</td><td style="padding:5px 8px;font-size:9pt;color:#1a1a2e;">${t.name}</td><td style="padding:5px 8px;font-size:9pt;color:#7a7567;text-align:right;">${t.files.length} file${t.files.length!==1?'s':''}</td></tr>`).join('');
+
+  const specLabel = specFiles.length>0 ? specFiles.map(f=>f.name).join(', ') : 'C+B Engineering Standard (Default)';
+
+  const coverPage = `
+    <div style="page-break-after:always;min-height:100vh;display:flex;flex-direction:column;justify-content:space-between;padding:0;">
+      <!-- Top bar -->
+      <div style="background:#1a1a2e;padding:22px 28px;display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>${logoDataUrl?`<img src="${logoDataUrl}" style="max-height:56px;max-width:200px;object-fit:contain;">`:`<div style="font-size:20pt;font-weight:700;color:#f5f2eb;font-family:Georgia,serif;">${company.name||'Mechanical Contractor'}</div>`}</div>
+        <div style="text-align:right;color:rgba(245,242,235,.65);font-size:8.5pt;line-height:1.7;">
+          ${company.address?company.address+'<br>':''}${company.city?company.city+'<br>':''}${company.phone?'Tel: '+company.phone+'<br>':''}${company.email?company.email:''}
+        </div>
+      </div>
+      <!-- Title block -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:40px 40px 20px;">
+        <div style="width:50px;height:4px;background:#c8392b;margin:0 auto 24px;"></div>
+        <div style="font-size:11pt;letter-spacing:3px;text-transform:uppercase;color:#7a7567;font-family:Georgia,serif;margin-bottom:10px;">Operations &amp; Maintenance Manual</div>
+        <div style="font-size:28pt;font-weight:700;color:#1a1a2e;font-family:Georgia,serif;line-height:1.15;margin-bottom:8px;">${projName}</div>
+        ${projNum?`<div style="font-size:12pt;color:#7a7567;font-family:Georgia,serif;margin-bottom:6px;">Job #${projNum}</div>`:''}
+        <div style="width:50px;height:2px;background:#d4cfc4;margin:20px auto;"></div>
+        <div style="font-size:10pt;color:#7a7567;">Mechanical HVAC Systems</div>
+      </div>
+      <!-- Project info grid -->
+      <div style="margin:0 28px 24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <div style="border:1px solid #d4cfc4;border-radius:3px;padding:10px 14px;background:#faf9f6;">
+          <div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7a7567;margin-bottom:3px;">Engineer / Consultant</div>
+          <div style="font-size:9.5pt;color:#1a1a2e;font-weight:600;">${projEng||'—'}</div>
+        </div>
+        <div style="border:1px solid #d4cfc4;border-radius:3px;padding:10px 14px;background:#faf9f6;">
+          <div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7a7567;margin-bottom:3px;">Date</div>
+          <div style="font-size:9.5pt;color:#1a1a2e;font-weight:600;">${dateStr}</div>
+        </div>
+        <div style="border:1px solid #d4cfc4;border-radius:3px;padding:10px 14px;background:#faf9f6;">
+          <div style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#7a7567;margin-bottom:3px;">Prepared By</div>
+          <div style="font-size:9.5pt;color:#1a1a2e;font-weight:600;">${company.preparedby||company.name||'—'}</div>
+        </div>
+      </div>
+      <!-- Table of contents -->
+      <div style="margin:0 28px 28px;">
+        <div style="font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#7a7567;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #1a1a2e;">Manual Contents</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#1a1a2e;">
+            <th style="padding:5px 8px;font-size:8pt;color:rgba(245,242,235,.7);text-align:left;width:30px;">#</th>
+            <th style="padding:5px 8px;font-size:8pt;color:rgba(245,242,235,.7);text-align:left;">Section</th>
+            <th style="padding:5px 8px;font-size:8pt;color:rgba(245,242,235,.7);text-align:right;">Files</th>
+          </tr></thead>
+          <tbody>${tocLines}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:7.5pt;color:#7a7567;">Specification basis: ${specLabel}</div>
+      </div>
+      <!-- Bottom bar -->
+      <div style="background:#c8392b;height:6px;"></div>
+    </div>`;
+
   return`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
   @page{margin:17mm 14mm 14mm 14mm;size:letter;}
   body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;font-size:10pt;line-height:1.4;}
@@ -845,6 +910,7 @@ function buildReportHTML(){
   .ft{margin-top:18px;padding-top:7px;border-top:1px solid #d4cfc4;display:flex;justify-content:space-between;font-size:7.5pt;color:#7a7567;}
   @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
   </style></head><body>
+  ${coverPage}
   <div class="lh"><div>${logoTag}</div><div class="co">${company.name?'<strong>'+company.name+'</strong><br>':''}${company.address?company.address+'<br>':''}${company.city?company.city+'<br>':''}${company.phone?'Tel: '+company.phone+'<br>':''}${company.email?company.email:''}</div></div>
   <div class="dt"><h1>Operations &amp; Maintenance Manual</h1><div class="sub">Index &amp; Completeness Review — Mechanical HVAC Systems</div></div>
   <div class="mg">
@@ -865,6 +931,7 @@ function buildReportHTML(){
   <div class="ft"><div>${company.name||''} — O&amp;M Manual Index — Confidential</div><div>${printDate}${projNum?' · Job #'+projNum:''}</div></div>
   </body></html>`;
 }
+
 function exportPDF(){
   const frame=document.getElementById('print-frame');
   frame.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;border:none;z-index:9999;background:white;';
@@ -881,14 +948,19 @@ function openOutlook(){
   const dateStr=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
   const allR=Object.values(results);
   const totP=allR.reduce((a,r)=>a+r.present,0),totN=allR.reduce((a,r)=>a+r.notes_cnt,0),totM=allR.reduce((a,r)=>a+r.missing,0);
+
   let tabLines='';
   tabs.forEach((t,i)=>{const r=results[t.id];if(!r)return;tabLines+=`  Tab ${i+1} — ${t.name}: ✅ ${r.present}  ⚠️ ${r.notes_cnt}  ❌ ${r.missing}\n`;});
+
   const subject=`O&M Manual Submission — ${projName}${projNum?' (Job #'+projNum+')':''}`;
   const body=`Hello,
+
 Please find our Operations & Maintenance Manual completeness review for the following project.
+
 PROJECT:     ${projName}${projNum?' | Job #'+projNum:''}
 DATE:        ${dateStr}
 PREPARED BY: ${company.preparedby||company.name||''}
+
 MANUAL INDEX — COMPLETENESS SUMMARY
 ────────────────────────────────────────────
 ${tabLines}────────────────────────────────────────────
@@ -896,12 +968,15 @@ TOTAL: ✅ ${totP} Present  ⚠️ ${totN} Attention  ❌ ${totM} Missing
 ────────────────────────────────────────────
 ${totM>0?`\nIMPORTANT: ${totM} required item(s) are missing from the submitted package.\n`:''}
 The complete indexed report is attached as a PDF.
+
 ${company.name?company.name+'\n':''}${company.phone?'Tel: '+company.phone+'\n':''}${company.email?company.email:''}`.trim();
+
   window.location.href=`mailto:${encodeURIComponent(engEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-// ── API ───────────────────────────────────────────────
-const API_URL='/anthropic-proxy';
+// ── API KEY ───────────────────────────────────────────
+const API_URL = '/anthropic-proxy';
+function getApiKey(){ return ''; } // Key lives in Cloudflare env, not here
 
 // ── INIT ──────────────────────────────────────────────
 loadSettings();
