@@ -251,39 +251,12 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
 <iframe id="print-frame" style="position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;"></iframe>
 
 <script>
-const CB_SPEC=`OPERATIONS & MAINTENANCE MANUAL REQUIREMENTS
-Source: Section 21 05 01 - C+B Engineering Standard
-
-ALWAYS REQUIRED:
-1. Cover Page - project name, address, date, contractor info
-2. Index Page - complete list of all sections
-3. Substantial Completion / Warranty Letter - signed by mechanical contractor, 1-year workmanship guarantee
-
-GENERAL SECTION:
-- Contact list: Consultants, GC, Mechanical Contractor, all subs
-- Mechanical Contractor Letter of Warranty
-- All equipment extended warranties
-- Valve directory (if applicable)
-- Gas fitter tags (if applicable)
-
-EACH EQUIPMENT TAB must include (as applicable):
-- Section cover page (project info + manufacturer + equipment type)
-- Equipment data sheet / cut sheet
-- Installation instructions
-- Operating instructions
-- Maintenance instructions
-- Preventive maintenance schedule (daily/weekly/monthly/semi-annual/annual)
-- Pressure test / startup reports
-- Equipment warranty
-- Approved shop drawings
-- Supplier contact info
-- Air filter sizes, quantities, types with unit designations
-
-TESTING & BALANCING TAB: Complete TAB / Air Balance Report
-FIRE SUPPRESSION TAB: Balloon test certificate, fire suppression reports
-AS-BUILT DRAWINGS TAB (last): Complete mechanical as-built drawing set
-
-FORMAT: Electronic PDF with bookmarks per section. Hardcopy: 3-ring binders with tabs.`;
+const CB_SPEC=`O&M MANUAL SPEC (C+B Engineering Standard):
+FIXED: Cover Page, Index, Substantial Completion Letter (1-yr workmanship warranty).
+EACH TAB: Section cover page, IOM manual, data sheet, installation/operating/maintenance instructions, preventive maintenance schedule, startup report, warranty, shop drawings, supplier contact, filter info.
+TAB REPORT TAB: Complete air balance/TAB report.
+FIRE TAB: Balloon test certificate, fire suppression reports.
+AS-BUILT TAB (last): Mechanical as-built drawings.`;
 
 let company={},logoDataUrl=null;
 let specFiles=[],docFiles=[];
@@ -463,8 +436,8 @@ async function runPass1(){
   setStepState(2,'active','');
   renderInventorySummary();
   // Wait 15 seconds for rate limit token bucket to refill before Pass 2
-  setContent(document.getElementById('content').innerHTML + '<div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;font-family:var(--mono);">Waiting 60 seconds before Pass 2 to stay within API rate limits...</div>');
-  await sleep(60000);
+  setContent(document.getElementById('content').innerHTML + '<div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;font-family:var(--mono);">Waiting 2 minutes before Pass 2 to allow rate limit to fully reset...</div>');
+  await sleep(120000);
   await runPass2();
 }
 
