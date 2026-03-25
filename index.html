@@ -369,13 +369,51 @@ function setStepState(step,state,badge){
 }
 function resetSteps(){[1,2,3].forEach(n=>setStepState(n,'disabled',''));passState={p1:'idle',p2:'idle',p3:'idle'};checkReady();}
 
-async function callAPI(messages,maxTokens){
+async function callAPI(messages,maxTokens,retryCount){
+  retryCount=retryCount||0;
+  const MAX_RETRIES=5;
   const resp=await fetch('/anthropic-proxy',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTokens||4000,messages})
   });
-  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'API error '+resp.status);}
+
+  // Handle retryable errors: 529 (Cloudflare overload), 529 (Anthropic overload), 529 (rate limit)
+  if(resp.status===529||resp.status===503||resp.status===502){
+    if(retryCount>=MAX_RETRIES)throw new Error('Server overloaded after '+MAX_RETRIES+' retries. Please try again in a few minutes.');
+    const waitSec=60*(retryCount+1); // 60s, 120s, 180s, 240s, 300s
+    console.log('Got '+resp.status+', waiting '+waitSec+'s before retry '+(retryCount+1)+'/'+MAX_RETRIES);
+    await sleep(waitSec*1000);
+    return callAPI(messages,maxTokens,retryCount+1);
+  }
+
+  if(resp.status===429){
+    if(retryCount>=MAX_RETRIES)throw new Error('Rate limit exceeded after '+MAX_RETRIES+' retries.');
+    const waitSec=90*(retryCount+1);
+    console.log('Rate limited, waiting '+waitSec+'s');
+    await sleep(waitSec*1000);
+    return callAPI(messages,maxTokens,retryCount+1);
+  }
+
+  if(!resp.ok){
+    let errMsg='API error '+resp.status;
+    try{const e=await resp.json();errMsg=e.error?.message||errMsg;}catch{}
+    throw new Error(errMsg);
+  }
+
   const data=await resp.json();
+
+  // Anthropic overloaded response comes back as 200 with error in body
+  if(data.error){
+    const errType=data.error.type||'';
+    if((errType==='overloaded_error'||data.error.message?.includes('overloaded'))&&retryCount<MAX_RETRIES){
+      const waitSec=90*(retryCount+1);
+      console.log('Anthropic overloaded, waiting '+waitSec+'s');
+      await sleep(waitSec*1000);
+      return callAPI(messages,maxTokens,retryCount+1);
+    }
+    throw new Error(data.error.message||'API error');
+  }
+
   return data.content.map(b=>b.text||'').join('').trim();
 }
 
