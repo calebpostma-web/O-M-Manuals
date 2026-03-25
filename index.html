@@ -130,7 +130,9 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
 .btn-cancel{padding:8px 14px;background:none;border:1px solid var(--rule);border-radius:4px;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer;}
 .btn-cancel:hover{border-color:var(--accent);color:var(--accent);}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:2px;}
-</style></head>
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+</head>
 <body>
 
 <div class="mo hidden" id="co-modal">
@@ -763,14 +765,7 @@ function buildPrintHTML(){
   return'<!DOCTYPE html><html><head><meta charset="UTF-8">'+css+'</head><body>'+pages+'</body></html>';
 }
 
-function exportPDF(){
-  if(!finalReport)return;
-  const frame=document.getElementById('print-frame');
-  frame.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;border:none;z-index:9999;background:white;';
-  const doc=frame.contentDocument||frame.contentWindow.document;
-  doc.open();doc.write(buildPrintHTML());doc.close();
-  setTimeout(()=>{frame.contentWindow.focus();frame.contentWindow.print();setTimeout(()=>{frame.style.cssText='position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';},1500);},800);
-}
+// exportPDF replaced by buildAndMergeFullPDF below
 
 function openOutlook(){
   if(!finalReport)return;
@@ -789,6 +784,445 @@ function openOutlook(){
 loadSettings();
 checkReady();
 if(!localStorage.getItem('om_co_v3')){setTimeout(()=>{if(confirm('Set up your company info? Takes 30 seconds and appears on every manual.'))openModal();},800);}
+</script>
+<script>
+// ── FULL PDF MERGE ENGINE ─────────────────────────────────────────────────────
+// Uses PDF-lib to build all generated pages (cover, index, letter, section covers)
+// then merges the actual uploaded PDF files in between — one complete deliverable.
+
+async function exportPDF() {
+  if (!finalReport) return;
+
+  const btn = document.querySelector('.ab-pdf');
+  if (btn) { btn.textContent = 'Building PDF...'; btn.disabled = true; }
+
+  try {
+    setContent(document.getElementById('content').innerHTML +
+      '<div id="pdf-progress" style="position:fixed;bottom:20px;right:20px;background:#1a1a2e;color:#f5f2eb;padding:14px 20px;border-radius:6px;font-family:var(--mono);font-size:11px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);">Building PDF... starting</div>');
+
+    const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
+
+    const projName = finalReport.projectName || document.getElementById('proj-name').value || 'O&M Manual';
+    const projAddr = finalReport.projectAddress || document.getElementById('proj-addr').value || '';
+    const projNum  = finalReport.projectNumber  || document.getElementById('proj-number').value || '';
+    const projEng  = document.getElementById('proj-engineer').value || '';
+    const dateStr  = finalReport.date || new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+    const printDate = new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+    const tabs = finalReport.tabs || [];
+
+    function prog(msg) {
+      const el = document.getElementById('pdf-progress');
+      if (el) el.textContent = 'Building PDF... ' + msg;
+    }
+
+    // ── HELPER: render an HTML page to PDF via iframe + print ────────────────
+    // We render each generated page as a single-page print, capture it, then
+    // embed it. Since PDF-lib can't embed HTML directly, we use a two-phase
+    // approach: render HTML pages to a hidden iframe and use the browser's
+    // built-in print-to-PDF via a Blob URL, then load those bytes.
+    // 
+    // Actually the cleanest approach for a single-file tool is to build ALL
+    // generated pages as one HTML doc, print that to PDF, then use PDF-lib
+    // to merge the real uploaded files INTO the correct positions.
+    //
+    // Flow:
+    // 1. Build generated-pages HTML (cover, index, letter, section covers + content listings)
+    // 2. User prints that to PDF (or we trigger print) — this becomes the "spine"
+    // 3. For each tab, we insert the actual uploaded PDF pages after the section cover
+    //
+    // BUT: browser can't intercept print output as bytes.
+    //
+    // REAL approach: use PDF-lib to draw all generated pages programmatically,
+    // then merge uploaded PDFs in the correct slots.
+
+    prog('loading fonts');
+    const mergedPdf = await PDFDocument.create();
+    const helveticaBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+    const helvetica     = await mergedPdf.embedFont(StandardFonts.Helvetica);
+    const timesRoman    = await mergedPdf.embedFont(StandardFonts.TimesRomanBold);
+    const timesItalic   = await mergedPdf.embedFont(StandardFonts.TimesRoman);
+
+    // Colours
+    const INK   = rgb(0.102, 0.102, 0.180);   // #1a1a2e
+    const PAPER = rgb(0.961, 0.949, 0.922);   // #f5f2eb
+    const RED   = rgb(0.784, 0.224, 0.169);   // #c8392b
+    const MUTED = rgb(0.478, 0.459, 0.404);   // #7a7567
+    const WHITE = rgb(1, 1, 1);
+
+    const W = 612, H = 792; // US Letter points
+    const M = 54; // margin
+
+    // ── LOGO + SIG helpers ───────────────────────────────────────────────────
+    let logoImg = null, sigImg = null;
+
+    async function tryEmbedImage(dataUrl) {
+      if (!dataUrl) return null;
+      try {
+        const b64 = dataUrl.split(',')[1];
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const mime = dataUrl.split(';')[0].split(':')[1];
+        if (mime === 'image/png') return await mergedPdf.embedPng(bytes);
+        return await mergedPdf.embedJpg(bytes);
+      } catch { return null; }
+    }
+
+    prog('loading images');
+    logoImg = await tryEmbedImage(logoDataUrl);
+    sigImg  = await tryEmbedImage(sigDataUrl);
+
+    // ── DRAW HELPERS ─────────────────────────────────────────────────────────
+    function drawLogo(page, x, y, maxW, maxH) {
+      if (!logoImg) {
+        page.drawText(company.name || '', { x, y, size: 13, font: helveticaBold, color: INK });
+        return;
+      }
+      const { width: iw, height: ih } = logoImg.scale(1);
+      const scale = Math.min(maxW / iw, maxH / ih);
+      page.drawImage(logoImg, { x, y: y - ih * scale, width: iw * scale, height: ih * scale });
+    }
+
+    function drawLogoInverted(page, x, y, maxW, maxH) {
+      // On dark background — if we have a logo, draw a white rectangle behind it
+      if (!logoImg) {
+        page.drawText(company.name || '', { x, y, size: 13, font: helveticaBold, color: WHITE });
+        return;
+      }
+      const { width: iw, height: ih } = logoImg.scale(1);
+      const scale = Math.min(maxW / iw, maxH / ih);
+      // Draw white bg rect for logo visibility
+      page.drawRectangle({ x: x - 4, y: y - ih * scale - 4, width: iw * scale + 8, height: ih * scale + 8, color: WHITE });
+      page.drawImage(logoImg, { x, y: y - ih * scale, width: iw * scale, height: ih * scale });
+    }
+
+    function wrapText(text, maxWidth, font, size) {
+      const words = text.split(' ');
+      const lines = [];
+      let current = '';
+      for (const w of words) {
+        const test = current ? current + ' ' + w : w;
+        if (font.widthOfTextAtSize(test, size) > maxWidth && current) {
+          lines.push(current);
+          current = w;
+        } else {
+          current = test;
+        }
+      }
+      if (current) lines.push(current);
+      return lines;
+    }
+
+    // ── PAGE 1: COVER PAGE ───────────────────────────────────────────────────
+    prog('cover page');
+    {
+      const page = mergedPdf.addPage([W, H]);
+
+      // Background
+      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: PAPER });
+
+      // Top bar
+      page.drawRectangle({ x: 0, y: H - 90, width: W, height: 90, color: WHITE });
+      page.drawRectangle({ x: 0, y: H - 93, width: W, height: 3, color: RED });
+
+      // Logo top-left
+      drawLogo(page, M, H - 26, 180, 56);
+
+      // Company info top-right
+      const coLines = [company.address, company.city,
+        company.phone ? 'Tel: ' + company.phone : '',
+        company.email].filter(Boolean);
+      coLines.forEach((ln, i) => {
+        page.drawText(ln, { x: W - M - helvetica.widthOfTextAtSize(ln, 8.5), y: H - 28 - i * 12, size: 8.5, font: helvetica, color: MUTED });
+      });
+
+      // Centre content
+      const cx = W / 2;
+      // Red rule
+      page.drawRectangle({ x: cx - 30, y: H / 2 + 80, width: 60, height: 4, color: RED });
+
+      // Address
+      if (projAddr) {
+        const aw = helvetica.widthOfTextAtSize(projAddr, 11);
+        page.drawText(projAddr, { x: cx - aw / 2, y: H / 2 + 60, size: 11, font: helvetica, color: MUTED });
+      }
+
+      // Project name — large, may need wrapping
+      const nameLines = wrapText(projName, W - M * 3, timesRoman, 32);
+      nameLines.forEach((ln, i) => {
+        const lw = timesRoman.widthOfTextAtSize(ln, 32);
+        page.drawText(ln, { x: cx - lw / 2, y: H / 2 + 30 - i * 38, size: 32, font: timesRoman, color: INK });
+      });
+
+      // Subtitle
+      const sub = 'Operation & Maintenance Manual';
+      const sw = timesItalic.widthOfTextAtSize(sub, 14);
+      page.drawText(sub, { x: cx - sw / 2, y: H / 2 - 30 - (nameLines.length - 1) * 38, size: 14, font: timesItalic, color: MUTED });
+
+      // Second rule
+      page.drawRectangle({ x: cx - 30, y: H / 2 - 55 - (nameLines.length - 1) * 38, width: 60, height: 2, color: RED });
+
+      // Date / job / engineer
+      const metaParts = [projNum ? 'Job #' + projNum : '', dateStr, projEng].filter(Boolean).join('   ·   ');
+      const mw = helvetica.widthOfTextAtSize(metaParts, 10);
+      page.drawText(metaParts, { x: cx - mw / 2, y: H / 2 - 75 - (nameLines.length - 1) * 38, size: 10, font: helvetica, color: MUTED });
+
+      // Red stripe bottom
+      page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
+    }
+
+    // ── PAGE 2: INDEX ────────────────────────────────────────────────────────
+    prog('index page');
+    {
+      const page = mergedPdf.addPage([W, H]);
+      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+
+      // Header
+      drawLogo(page, M, H - 26, 160, 50);
+      page.drawText(projName + (projNum ? ' — Job #' + projNum : ''), { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
+      page.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
+
+      // Title
+      page.drawText('Index', { x: M, y: H - 100, size: 22, font: timesRoman, color: INK });
+
+      // Table header
+      const tableTop = H - 128;
+      page.drawRectangle({ x: M, y: tableTop - 20, width: W - M * 2, height: 22, color: INK });
+      page.drawText('Tab', { x: M + 8, y: tableTop - 14, size: 9, font: helveticaBold, color: WHITE });
+      page.drawText('Section', { x: M + 70, y: tableTop - 14, size: 9, font: helveticaBold, color: WHITE });
+
+      // Table rows
+      const indexRows = [
+        { tab: '—', name: 'Substantial Completion / Warranty Letter' },
+        ...tabs.map((t, i) => ({ tab: String(t.tabNumber || i + 1), name: t.tabName }))
+      ];
+
+      indexRows.forEach((row, i) => {
+        const ry = tableTop - 40 - i * 22;
+        if (i % 2 === 1) page.drawRectangle({ x: M, y: ry - 6, width: W - M * 2, height: 22, color: rgb(0.98, 0.973, 0.957) });
+        page.drawText(row.tab, { x: M + 8, y: ry, size: 9.5, font: helveticaBold, color: INK });
+        page.drawText(row.name, { x: M + 70, y: ry, size: 9.5, font: helvetica, color: INK });
+      });
+
+      // Footer
+      page.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
+      page.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
+      page.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+    }
+
+    // ── PAGE 3: SUBSTANTIAL COMPLETION LETTER ────────────────────────────────
+    prog('warranty letter');
+    {
+      const page = mergedPdf.addPage([W, H]);
+      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+
+      // Header
+      drawLogo(page, M, H - 26, 160, 50);
+      page.drawText(projName + (projNum ? ' — Job #' + projNum : ''), { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
+      page.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
+
+      let cy = H - 100;
+
+      // From address
+      const fromLines = [company.address, company.city, company.phone ? company.phone : ''].filter(Boolean);
+      fromLines.forEach(ln => { page.drawText(ln, { x: M, y: cy, size: 9, font: helvetica, color: MUTED }); cy -= 13; });
+      cy -= 10;
+
+      // Date
+      page.drawText(dateStr, { x: M, y: cy, size: 10, font: helvetica, color: INK }); cy -= 20;
+
+      // To
+      page.drawText(projName, { x: M, y: cy, size: 10, font: helveticaBold, color: INK }); cy -= 14;
+      if (projAddr) { page.drawText(projAddr, { x: M, y: cy, size: 10, font: helvetica, color: INK }); cy -= 20; }
+      cy -= 6;
+
+      // RE line
+      page.drawText('RE: Substantial Completion / Commissioning of Units / Occupancy', { x: M, y: cy, size: 10, font: helveticaBold, color: INK }); cy -= 24;
+
+      // Body paragraphs
+      const scl = finalReport.fixedSections && finalReport.fixedSections.substantialCompletionLetter;
+      const equipSummary = (scl && scl.equipmentSummary) || 'All mechanical equipment has been commissioned and is operating as per specifications, plans and change orders.';
+
+      const paras = [
+        'This letter acknowledges that all equipment installed at ' + projName + ' has been completed in accordance with the manufacturer\'s instructions. ' + equipSummary,
+        'We, the undersigned, guarantee our workmanship on the subject project for a period of one (1) year from the date of substantial completion. All equipment is warranted as per the manufacturer\'s warranty.',
+        'All labor and materials furnished, as well as work performed by us, comply with the contract plans, specifications, and any authorized alterations or additions. Should any defects arise during the contract guarantee period due to improper materials or workmanship, we agree to remedy them, along with any affected work, upon written notice.'
+      ];
+
+      const textWidth = W - M * 2;
+      paras.forEach(para => {
+        const lines = wrapText(para, textWidth, helvetica, 10);
+        lines.forEach(ln => { page.drawText(ln, { x: M, y: cy, size: 10, font: helvetica, color: INK }); cy -= 14; });
+        cy -= 8;
+      });
+
+      cy -= 20;
+
+      // Signature image
+      if (sigImg) {
+        const { width: sw, height: sh } = sigImg.scale(1);
+        const scale = Math.min(180 / sw, 70 / sh);
+        page.drawImage(sigImg, { x: M, y: cy - sh * scale, width: sw * scale, height: sh * scale });
+        cy -= sh * scale + 8;
+      }
+
+      // Sig line
+      page.drawLine({ start: { x: M, y: cy }, end: { x: M + 220, y: cy }, thickness: 1, color: INK }); cy -= 14;
+      page.drawText(company.preparedby || '', { x: M, y: cy, size: 11, font: helveticaBold, color: INK }); cy -= 14;
+      page.drawText(company.name || '', { x: M, y: cy, size: 10, font: helvetica, color: MUTED }); cy -= 13;
+      if (company.title) { page.drawText(company.title, { x: M, y: cy, size: 9, font: helvetica, color: MUTED }); }
+
+      // Footer
+      page.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
+      page.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
+      page.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+    }
+
+    // ── TAB SECTIONS ─────────────────────────────────────────────────────────
+    for (let ti = 0; ti < tabs.length; ti++) {
+      const tab = tabs[ti];
+      prog('Tab ' + (tab.tabNumber || ti + 1) + ' of ' + tabs.length + ' — ' + tab.tabName);
+
+      // Section cover page
+      {
+        const page = mergedPdf.addPage([W, H]);
+
+        // Dark background
+        page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: INK });
+
+        // Top bar with logo
+        page.drawRectangle({ x: 0, y: H - 90, width: W, height: 90, color: rgb(0.08, 0.08, 0.16) });
+        page.drawRectangle({ x: 0, y: H - 93, width: W, height: 3, color: RED });
+        drawLogoInverted(page, M, H - 22, 180, 56);
+
+        // Centre content
+        const cx = W / 2;
+        const coverLines = tab.sectionCoverLines || [projAddr, projName, tab.manufacturer || '', tab.equipment || ''];
+        const styles = [
+          { size: 11, font: helvetica, color: rgb(0.478, 0.459, 0.404) },
+          { size: 26, font: timesRoman, color: WHITE },
+          { size: 18, font: timesItalic, color: rgb(0.8, 0.8, 0.8) },
+          { size: 14, font: helvetica, color: rgb(0.65, 0.65, 0.65) },
+        ];
+
+        let startY = H / 2 + 60;
+        coverLines.forEach((ln, li) => {
+          if (!ln) return;
+          const style = styles[Math.min(li, styles.length - 1)];
+          const lines = wrapText(ln, W - M * 3, style.font, style.size);
+          lines.forEach((l, lineIdx) => {
+            const lw = style.font.widthOfTextAtSize(l, style.size);
+            page.drawText(l, { x: cx - lw / 2, y: startY - lineIdx * (style.size + 6), size: style.size, font: style.font, color: style.color });
+          });
+          startY -= (style.size + 10) * Math.max(1, wrapText(ln, W - M * 3, style.font, style.size).length) + 6;
+        });
+
+        // Tab number bottom right
+        const tabLabel = 'Tab ' + (tab.tabNumber || ti + 1);
+        page.drawText(tabLabel, { x: W - M - helvetica.widthOfTextAtSize(tabLabel, 10), y: M, size: 10, font: helvetica, color: rgb(0.4, 0.4, 0.5) });
+
+        // Red stripe bottom
+        page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
+      }
+
+      // Content listing page
+      {
+        const page = mergedPdf.addPage([W, H]);
+        page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+
+        // Header
+        drawLogo(page, M, H - 26, 160, 50);
+        page.drawText(projName + (projNum ? ' — Job #' + projNum : ''), { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
+        page.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
+
+        // Tab badge + section name
+        const badge = 'Tab ' + (tab.tabNumber || ti + 1);
+        page.drawRectangle({ x: M, y: H - 100, width: helveticaBold.widthOfTextAtSize(badge, 9) + 16, height: 18, color: INK, borderRadius: 2 });
+        page.drawText(badge, { x: M + 8, y: H - 95, size: 9, font: helveticaBold, color: WHITE });
+        page.drawText(tab.tabName, { x: M + helveticaBold.widthOfTextAtSize(badge, 9) + 26, y: H - 96, size: 16, font: timesRoman, color: INK });
+
+        // Summary
+        if (tab.documentSummary) {
+          const sumLines = wrapText(tab.documentSummary, W - M * 2, helvetica, 9.5);
+          sumLines.forEach((ln, i) => {
+            page.drawText(ln, { x: M, y: H - 120 - i * 13, size: 9.5, font: helvetica, color: MUTED });
+          });
+        }
+
+        // Document table — only present items
+        let ty = H - 150;
+        page.drawRectangle({ x: M, y: ty - 18, width: W - M * 2, height: 20, color: INK });
+        page.drawText('Document', { x: M + 8, y: ty - 12, size: 8.5, font: helveticaBold, color: WHITE });
+        page.drawText('File', { x: M + 180, y: ty - 12, size: 8.5, font: helveticaBold, color: WHITE });
+        ty -= 38;
+
+        const presItems = tab.presentItems || [];
+        presItems.forEach((item, ri) => {
+          if (ri % 2 === 0) page.drawRectangle({ x: M, y: ty - 5, width: W - M * 2, height: 20, color: rgb(0.98, 0.973, 0.957) });
+          // Find matching file
+          const file = (tab.files || []).find(fn => {
+            const inv = inventory.find(x => x.filename === fn);
+            return inv && ((inv.docTypes || []).some(d => d.toLowerCase().includes(item.toLowerCase())) || item.toLowerCase().includes(((inv.docTypes || [''])[0] || '').toLowerCase()));
+          }) || (tab.files || [])[0] || '';
+          page.drawText(item, { x: M + 8, y: ty, size: 9, font: helvetica, color: INK });
+          // Truncate filename if too long
+          let fn = file;
+          while (fn && helvetica.widthOfTextAtSize(fn, 8) > W - M * 2 - 185) fn = fn.slice(0, -4) + '…';
+          if (fn) page.drawText(fn, { x: M + 180, y: ty, size: 8, font: helvetica, color: MUTED });
+          ty -= 20;
+        });
+
+        // Footer
+        page.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
+        page.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
+        const footMid = 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName;
+        page.drawText(footMid, { x: cx - helvetica.widthOfTextAtSize(footMid, 7.5) / 2, y: 22, size: 7.5, font: helvetica, color: MUTED });
+        page.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+        var cx = W / 2;
+      }
+
+      // ── MERGE ACTUAL UPLOADED PDFs FOR THIS TAB ─────────────────────────────
+      for (const filename of (tab.files || [])) {
+        const fileObj = docFiles.find(f => f.name === filename);
+        if (!fileObj || !filename.toLowerCase().endsWith('.pdf')) continue;
+
+        prog('merging ' + filename);
+        try {
+          const arrayBuf = await fileObj.arrayBuffer();
+          const srcPdf = await PDFDocument.load(arrayBuf, { ignoreEncryption: true });
+          const pageCount = srcPdf.getPageCount();
+          const pageIndices = Array.from({ length: pageCount }, (_, i) => i);
+          const copiedPages = await mergedPdf.copyPages(srcPdf, pageIndices);
+          copiedPages.forEach(p => mergedPdf.addPage(p));
+          prog('merged ' + pageCount + ' pages from ' + filename);
+        } catch (err) {
+          // If PDF can't be merged (encrypted, corrupt), add a placeholder page
+          const page = mergedPdf.addPage([W, H]);
+          page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+          page.drawText('[ ' + filename + ' ]', { x: M, y: H / 2 + 10, size: 12, font: helveticaBold, color: INK });
+          page.drawText('This document could not be merged automatically.', { x: M, y: H / 2 - 10, size: 10, font: helvetica, color: MUTED });
+          page.drawText('Please insert manually: ' + filename, { x: M, y: H / 2 - 28, size: 9, font: helvetica, color: MUTED });
+        }
+      }
+    }
+
+    // ── SAVE ─────────────────────────────────────────────────────────────────
+    prog('saving...');
+    const pdfBytes = await mergedPdf.save();
+    const safeProj = projName.replace(/[^a-zA-Z0-9\s\-]/g, '').replace(/\s+/g, '_').slice(0, 40);
+    const filename = 'OM_Manual_' + safeProj + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+    download(pdfBytes, filename, 'application/pdf');
+
+    // Remove progress indicator
+    const el = document.getElementById('pdf-progress');
+    if (el) el.remove();
+    if (btn) { btn.textContent = 'Export Full Manual PDF'; btn.disabled = false; }
+
+  } catch (err) {
+    const el = document.getElementById('pdf-progress');
+    if (el) el.textContent = 'PDF Error: ' + err.message;
+    if (btn) { btn.textContent = 'Export Full Manual PDF'; btn.disabled = false; }
+    console.error('PDF build error:', err);
+  }
+}
 </script>
 </body>
 </html>
