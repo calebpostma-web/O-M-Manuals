@@ -17,17 +17,6 @@ export async function onRequest(context) {
 
   const body = await request.json();
 
-  if (body.messages) {
-    for (const message of body.messages) {
-      if (!Array.isArray(message.content)) continue;
-      for (const block of message.content) {
-        if (block.type === 'document' && block.source && block.source.media_type === 'application/pdf') {
-          block.source.page_count = 2;
-        }
-      }
-    }
-  }
-
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
