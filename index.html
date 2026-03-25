@@ -410,6 +410,7 @@ function parseJSON(raw){
   const clean=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
   return JSON.parse(clean);
 }
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 async function startAssembly(){
   document.getElementById('run-btn').disabled=true;
@@ -453,12 +454,17 @@ async function runPass1(){
     if(dot)dot.className='pc-done';
     const bar=document.getElementById('p1-bar');
     if(bar)bar.style.width=Math.round(((i+1)/docFiles.length)*100)+'%';
+    // Pause between files to stay under rate limit (30k tokens/min)
+    if(i < docFiles.length-1) await sleep(12000);
   }
 
   passState.p1='done';
   setStepState(1,'done','Done '+inventory.length+' files');
   setStepState(2,'active','');
   renderInventorySummary();
+  // Wait 15 seconds for rate limit token bucket to refill before Pass 2
+  setContent(document.getElementById('content').innerHTML + '<div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;font-family:var(--mono);">Waiting 60 seconds before Pass 2 to stay within API rate limits...</div>');
+  await sleep(60000);
   await runPass2();
 }
 
@@ -480,23 +486,67 @@ async function runPass2(){
   const projDate=document.getElementById('proj-date').value||new Date().toISOString().slice(0,10);
   const dateStr=new Date(projDate+'T12:00:00').toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
   const specContext=specFiles.length>0?'Engineer spec files provided: '+specFiles.map(f=>f.name).join(', '):'No engineer spec - using C+B Engineering Standard:\n'+CB_SPEC;
-  const invText=inventory.map((item,i)=>'File '+(i+1)+': '+item.filename+' ('+fmtSz(item.fileSize)+')\n  Type: '+(item.docTypes||[]).join(', ')+'\n  Manufacturer: '+(item.manufacturer||'Unknown')+'\n  Equipment: '+(item.equipment||'Unknown')+'\n  Model: '+(item.model||'Not specified')+'\n  Suggested tab: '+(item.suggestedTab||'Unassigned')+'\n  Multiple docs: '+(item.multipleDocuments?'YES - '+(item.subDocuments||[]).join(', '):'No')+'\n  Ambiguous: '+(item.ambiguous?'YES':'No')+'\n  Notes: '+(item.notes||'None')).join('\n\n');
 
-  const prompt='You are assembling a professional Operations & Maintenance Manual binder for mechanical HVAC project.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nSPEC:\n'+specContext+'\n\nDOCUMENT INVENTORY:\n'+invText+'\n\nBuild the COMPLETE manual structure.\n\nRULES:\n1. Every manual ALWAYS starts with: Cover Page, Index Page, Substantial Completion Letter\n2. One TAB per major piece of equipment or report type\n3. Each tab has a section cover page then its documents\n4. Multiple files from same manufacturer/equipment go in SAME tab\n5. TAB report gets its own tab\n6. Fire suppression/balloon test gets its own tab\n7. As-built drawings go LAST\n8. Tab names: "Manufacturer - Equipment Type"\n9. Flag missing items required by spec\n\nReturn ONLY valid JSON:\n{"manualTitle":"Operations & Maintenance Manual","projectName":"'+projName+'","projectAddress":"'+projAddr+'","projectNumber":"'+projNum+'","date":"'+dateStr+'","tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["ZJ_OPERATION_MANUAL.pdf","YORK_WARRANTY.pdf"],"documentSummary":"ZJ-series IOM manual plus limited warranty.","presentItems":["IOM manual","Warranty"],"missingItems":["Startup report"]}],"fixedSections":{"coverPage":{"line1":"'+projAddr+'","line2":"'+projName+'","line3":"Operation & Maintenance Manual"},"indexItems":["Substantial Completion Letter","York - Rooftop Air Conditioner"],"substantialCompletionLetter":{"equipmentSummary":"All equipment installed and commissioned."}},"missingItems":["Items required by spec not found"],"ambiguousFiles":["filenames needing re-review"],"notes":"Any important observations"}';
+  // Format a single inventory item as compact text
+  function fmtItem(item,i){
+    return 'File '+(i+1)+': '+item.filename+' ('+fmtSz(item.fileSize)+')\n  Type: '+(item.docTypes||[]).join(', ')+'\n  Manufacturer: '+(item.manufacturer||'Unknown')+'\n  Equipment: '+(item.equipment||'Unknown')+'\n  Model: '+(item.model||'Not specified')+'\n  Suggested tab: '+(item.suggestedTab||'Unassigned')+'\n  Multiple docs: '+(item.multipleDocuments?'YES':'No')+'\n  Ambiguous: '+(item.ambiguous?'YES':'No')+'\n  Notes: '+(item.notes||'None');
+  }
+
+  const BATCH = 15; // files per batch — keeps each Pass 2 API call well under token limit
+  const totalBatches = Math.ceil(inventory.length / BATCH);
+  let partialTabs = []; // collected tabs from all batches
 
   try{
-    const raw=await callAPI([{role:'user',content:[{type:'text',text:prompt}]}],4000);
-    structure=parseJSON(raw);
+    if(totalBatches === 1){
+      // Small job — one call, full structure
+      const invText = inventory.map((item,i)=>fmtItem(item,i)).join('\n\n');
+      const prompt = buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,false);
+      const raw = await callAPI([{role:'user',content:[{type:'text',text:prompt}]}],4000);
+      structure = parseJSON(raw);
+
+    } else {
+      // Large job — batch the inventory, collect tabs from each batch, then consolidate
+      setContent('<div class="progress-card"><div class="pc-title">Pass 2 - Building Structure in '+totalBatches+' batches</div><div class="pc-sub">Large job: processing '+inventory.length+' files in groups of '+BATCH+' to stay within API limits.</div><div class="pwrap"><div class="pbar" id="p2-bar" style="width:0%"></div></div></div>');
+
+      for(let b=0;b<totalBatches;b++){
+        const batchItems = inventory.slice(b*BATCH, (b+1)*BATCH);
+        const invText = batchItems.map((item,i)=>fmtItem(item,b*BATCH+i)).join('\n\n');
+        const prompt = buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,true);
+
+        const raw = await callAPI([{role:'user',content:[{type:'text',text:prompt}]}],3000);
+        const result = parseJSON(raw);
+        if(result.tabs) partialTabs = partialTabs.concat(result.tabs);
+
+        const bar=document.getElementById('p2-bar');
+        if(bar)bar.style.width=Math.round(((b+1)/totalBatches)*100)+'%';
+
+        // Wait between batches
+        if(b < totalBatches-1) await sleep(20000);
+      }
+
+      // Consolidation call — merge all partial tabs into final structure
+      await sleep(20000);
+      const consolidatePrompt = 'You are finalizing an O&M Manual structure.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nThese tabs were identified across multiple batches. Merge them into a clean final structure:\n- Combine any tabs that should be together (same manufacturer/equipment)\n- Number tabs sequentially\n- Ensure as-built drawings go last\n- Ensure TAB report and fire suppression each have their own tab\n- Build the complete index\n- Flag any global missing items required by spec\n\nSPEC REQUIREMENTS:\n'+CB_SPEC+'\n\nBATCH RESULTS:\n'+JSON.stringify(partialTabs,null,2)+'\n\nReturn ONLY valid JSON in this exact format:\n{"manualTitle":"Operations & Maintenance Manual","projectName":"'+projName+'","projectAddress":"'+projAddr+'","projectNumber":"'+projNum+'","date":"'+dateStr+'","tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["file.pdf"],"documentSummary":"Brief summary.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"fixedSections":{"coverPage":{"line1":"'+projAddr+'","line2":"'+projName+'","line3":"Operation & Maintenance Manual"},"indexItems":["Substantial Completion Letter"],"substantialCompletionLetter":{"equipmentSummary":"Summary of what was installed."}},"missingItems":["Global missing items"],"ambiguousFiles":[],"notes":"Any observations"}';
+
+      const raw2 = await callAPI([{role:'user',content:[{type:'text',text:consolidatePrompt}]}],4000);
+      structure = parseJSON(raw2);
+    }
+
     passState.p2='done';
     setStepState(2,'done','Done '+(structure.tabs&&structure.tabs.length||0)+' tabs');
     setStepState(3,'active','');
     const needsPass3=(structure.ambiguousFiles&&structure.ambiguousFiles.length>0)||inventory.some(x=>x.ambiguous);
-    if(needsPass3){await runPass3();}
+    if(needsPass3){await sleep(30000);await runPass3();}
     else{passState.p3='done';setStepState(3,'done','Complete');finalReport=structure;renderFinalManual();}
   }catch(err){
     setStepState(2,'disabled','');
     setContent('<div class="progress-card"><div class="pc-title" style="color:var(--accent)">Pass 2 Error</div><div style="font-size:12px;color:var(--muted);margin-top:6px;">'+esc(err.message)+'</div></div>');
   }
+}
+
+function buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,batchMode){
+  const batchNote=batchMode?'NOTE: This is one batch of a larger job. Focus on identifying and grouping the files in this batch only. Return tabs for these files. Do not worry about global missing items - that will be handled in a consolidation step.\n\n':'';
+  return batchNote+'You are assembling a professional Operations & Maintenance Manual for mechanical HVAC project.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nSPEC:\n'+specContext+'\n\nDOCUMENT INVENTORY:\n'+invText+'\n\nBuild the manual tab structure for these files.\n\nRULES:\n1. One TAB per major piece of equipment or report type\n2. Multiple files from same manufacturer/equipment go in SAME tab\n3. TAB/air balance report gets its own tab\n4. Fire suppression/balloon test gets its own tab\n5. As-built drawings go LAST\n6. Tab names: "Manufacturer - Equipment Type"\n7. Flag missing items per tab\n\nReturn ONLY valid JSON:\n{"tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["ZJ_OPERATION_MANUAL.pdf"],"documentSummary":"ZJ-series IOM manual.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"missingItems":[],"ambiguousFiles":[],"notes":""}';
 }
 
 async function runPass3(){
