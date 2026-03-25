@@ -151,6 +151,10 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
       <div class="mfl">Company Logo</div>
       <div class="logo-area" id="logo-area"><input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)"><div id="logo-content" style="font-size:11px;color:var(--muted);">Click to upload logo</div></div>
     </div>
+    <div style="margin-top:9px;">
+      <div class="mfl">Signature Image (for Substantial Completion Letter)</div>
+      <div class="logo-area" id="sig-area"><input type="file" id="sig-input" accept="image/*" onchange="handleSigUpload(event)"><div id="sig-content" style="font-size:11px;color:var(--muted);">Click to upload signature</div></div>
+    </div>
     <div class="macts">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" onclick="saveSettings()">Save</button>
@@ -258,7 +262,7 @@ TAB REPORT TAB: Complete air balance/TAB report.
 FIRE TAB: Balloon test certificate, fire suppression reports.
 AS-BUILT TAB (last): Mechanical as-built drawings.`;
 
-let company={},logoDataUrl=null;
+let company={},logoDataUrl=null,sigDataUrl=null;
 let specFiles=[],docFiles=[];
 let inventory=[];
 let structure=null;
@@ -268,11 +272,13 @@ let passState={p1:'idle',p2:'idle',p3:'idle'};
 function loadSettings(){
   const s=localStorage.getItem('om_co_v3');if(s)company=JSON.parse(s);
   const l=localStorage.getItem('om_co_logo');if(l)logoDataUrl=l;
+  const sg=localStorage.getItem('om_co_sig');if(sg)sigDataUrl=sg;
   const d=document.getElementById('proj-date');if(!d.value)d.value=new Date().toISOString().slice(0,10);
 }
 function openModal(){
   ['name','phone','address','city','email','website','preparedby','title'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.value=company[k]||'';});
   if(logoDataUrl)document.getElementById('logo-content').innerHTML='<img src="'+logoDataUrl+'" class="logo-preview">';
+  if(sigDataUrl)document.getElementById('sig-content').innerHTML='<img src="'+sigDataUrl+'" class="logo-preview">';
   document.getElementById('co-modal').classList.remove('hidden');
 }
 function closeModal(){document.getElementById('co-modal').classList.add('hidden');}
@@ -281,11 +287,16 @@ function saveSettings(){
   ['name','phone','address','city','email','website','preparedby','title'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)company[k]=el.value.trim();});
   localStorage.setItem('om_co_v3',JSON.stringify(company));
   if(logoDataUrl)localStorage.setItem('om_co_logo',logoDataUrl);
+  if(sigDataUrl)localStorage.setItem('om_co_sig',sigDataUrl);
   closeModal();
 }
 function handleLogoUpload(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=ev=>{logoDataUrl=ev.target.result;document.getElementById('logo-content').innerHTML='<img src="'+ev.target.result+'" class="logo-preview">';};r.readAsDataURL(f);
+}
+function handleSigUpload(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=ev=>{sigDataUrl=ev.target.result;document.getElementById('sig-content').innerHTML='<img src="'+ev.target.result+'" class="logo-preview">';};r.readAsDataURL(f);
 }
 
 const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
@@ -726,7 +737,7 @@ function buildPrintHTML(){
   // SUBSTANTIAL COMPLETION LETTER
   const scl=finalReport.fixedSections&&finalReport.fixedSections.substantialCompletionLetter;
   const sclDate=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
-  pages+='<div class="pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><div class="letter-body"><div class="ltr-from">'+esc(company.address||'')+'<br>'+esc(company.city||'')+'<br>'+esc(company.phone||'')+'</div><div class="ltr-date">'+esc(sclDate)+'</div><div class="ltr-to"><strong>'+esc(projName)+'</strong><br>'+esc(projAddr)+'</div><div class="ltr-re"><strong>RE: Substantial Completion / Commissioning of Units / Occupancy</strong></div><div class="ltr-txt"><p>This letter acknowledges that all equipment installed at '+esc(projName)+' has been completed in accordance with the manufacturer\'s instructions. '+esc((scl&&scl.equipmentSummary)||'All mechanical equipment has been commissioned and is operating as per specifications, plans and change orders.')+'</p><p>We, the undersigned, guarantee our workmanship on the subject project for a period of one (1) year from the date of substantial completion. All equipment is warranted as per the manufacturer\'s warranty.</p><p>All labor and materials furnished, as well as work performed by us, comply with the contract plans, specifications, and any authorized alterations or additions. Should any defects arise during the contract guarantee period due to improper materials or workmanship, we agree to remedy them, along with any affected work, upon written notice.</p></div><div class="ltr-sig"><div class="sig-line"></div><div class="sig-name">'+esc(company.preparedby||'')+'</div><div class="sig-co">'+esc(company.name||'')+'</div>'+(company.title?'<div class="sig-title">'+esc(company.title)+'</div>':'')+' </div></div><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
+  pages+='<div class="pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><div class="letter-body"><div class="ltr-from">'+esc(company.address||'')+'<br>'+esc(company.city||'')+'<br>'+esc(company.phone||'')+'</div><div class="ltr-date">'+esc(sclDate)+'</div><div class="ltr-to"><strong>'+esc(projName)+'</strong><br>'+esc(projAddr)+'</div><div class="ltr-re"><strong>RE: Substantial Completion / Commissioning of Units / Occupancy</strong></div><div class="ltr-txt"><p>This letter acknowledges that all equipment installed at '+esc(projName)+' has been completed in accordance with the manufacturer\'s instructions. '+esc((scl&&scl.equipmentSummary)||'All mechanical equipment has been commissioned and is operating as per specifications, plans and change orders.')+'</p><p>We, the undersigned, guarantee our workmanship on the subject project for a period of one (1) year from the date of substantial completion. All equipment is warranted as per the manufacturer\'s warranty.</p><p>All labor and materials furnished, as well as work performed by us, comply with the contract plans, specifications, and any authorized alterations or additions. Should any defects arise during the contract guarantee period due to improper materials or workmanship, we agree to remedy them, along with any affected work, upon written notice.</p></div><div class="ltr-sig">'+(sigDataUrl?'<div style="margin-bottom:4px;"><img src="'+sigDataUrl+'" style="max-height:72px;max-width:220px;object-fit:contain;display:block;"></div>':'')+'<div class="sig-line"></div><div class="sig-name">'+esc(company.preparedby||'')+'</div><div class="sig-co">'+esc(company.name||'')+'</div>'+(company.title?'<div class="sig-title">'+esc(company.title)+'</div>':'')+' </div></div><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
 
   // TAB SECTIONS
   tabs.forEach((tab,i)=>{
@@ -737,20 +748,17 @@ function buildPrintHTML(){
     // Content page
     const presItems=tab.presentItems||[];
     const missItems=tab.missingItems||[];
+    // PDF only shows present items — missing items appear in the tool UI only, not in the printed document
     const rows=presItems.map(item=>{
       const file=(tab.files||[]).find(fn=>{const inv=inventory.find(x=>x.filename===fn);return inv&&((inv.docTypes||[]).some(d=>d.toLowerCase().includes(item.toLowerCase()))||item.toLowerCase().includes(((inv.docTypes||[''])[0]||'').toLowerCase()));
       })||((tab.files||[])[0]||'');
-      return '<tr><td>'+esc(item)+'</td><td style="font-family:monospace;font-size:8pt;">'+esc(file)+'</td><td class="st-ok">Present</td></tr>';
-    }).join('')+missItems.map(item=>'<tr><td>'+esc(item)+'</td><td>&mdash;</td><td class="st-miss">Not found</td></tr>').join('');
+      return '<tr><td>'+esc(item)+'</td><td style="font-family:monospace;font-size:8pt;">'+esc(file)+'</td></tr>';
+    }).join('');
 
-    pages+='<div class="pg content-pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><div class="tab-sec-hdr"><div class="tab-num-badge">Tab '+(tab.tabNumber||i+1)+'</div><h2 class="tab-sec-name">'+esc(tab.tabName)+'</h2></div>'+(tab.documentSummary?'<p class="tab-sum">'+esc(tab.documentSummary)+'</p>':'')+'<table class="ct"><thead><tr><th>Document</th><th>File</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Tab '+(tab.tabNumber||i+1)+' &mdash; '+esc(tab.tabName)+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
+    pages+='<div class="pg content-pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><div class="tab-sec-hdr"><div class="tab-num-badge">Tab '+(tab.tabNumber||i+1)+'</div><h2 class="tab-sec-name">'+esc(tab.tabName)+'</h2></div>'+(tab.documentSummary?'<p class="tab-sum">'+esc(tab.documentSummary)+'</p>':'')+'<table class="ct"><thead><tr><th>Document</th><th>File</th></tr></thead><tbody>'+rows+'</tbody></table><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Tab '+(tab.tabNumber||i+1)+' &mdash; '+esc(tab.tabName)+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
   });
 
-  // MISSING ITEMS PAGE
-  const globalMissing=[...(finalReport.missingItems||[]),...(finalReport.finalGaps||[])];
-  if(globalMissing.length>0){
-    pages+='<div class="pg content-pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+'</div></div><div class="pg-rule"></div><h2 class="tab-sec-name" style="padding:0 0.6in 0.1in;color:#c8392b;">Required Items Not Found</h2><p class="tab-sum">The following items are required by the specification but were not found in any uploaded documents.</p><table class="ct"><thead><tr><th>Missing Item</th><th>Required By</th></tr></thead><tbody>'+globalMissing.map(m=>'<tr><td>'+esc(m)+'</td><td>CB Engineering Standard</td></tr>').join('')+'</tbody></table><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Completeness Review</span><span>Printed '+esc(printDate)+'</span></div></div>';
-  }
+  // Missing items are shown in the tool UI only — the PDF is the clean deliverable for the engineer
 
   return'<!DOCTYPE html><html><head><meta charset="UTF-8">'+css+'</head><body>'+pages+'</body></html>';
 }
