@@ -797,8 +797,12 @@ async function exportPDF() {
   if (btn) { btn.textContent = 'Building PDF...'; btn.disabled = true; }
 
   try {
-    setContent(document.getElementById('content').innerHTML +
-      '<div id="pdf-progress" style="position:fixed;bottom:20px;right:20px;background:#1a1a2e;color:#f5f2eb;padding:14px 20px;border-radius:6px;font-family:var(--mono);font-size:11px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);">Building PDF... starting</div>');
+    // Add progress badge without touching the main content
+    const progressBadge = document.createElement('div');
+    progressBadge.id = 'pdf-progress';
+    progressBadge.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1a1a2e;color:#f5f2eb;padding:14px 20px;border-radius:6px;font-family:var(--mono);font-size:11px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);';
+    progressBadge.textContent = 'Building PDF... starting';
+    document.body.appendChild(progressBadge);
 
     const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
 
@@ -811,8 +815,7 @@ async function exportPDF() {
     const tabs = finalReport.tabs || [];
 
     function prog(msg) {
-      const el = document.getElementById('pdf-progress');
-      if (el) el.textContent = 'Building PDF... ' + msg;
+      if (progressBadge) progressBadge.textContent = 'Building PDF... ' + msg;
     }
 
     // ── HELPER: render an HTML page to PDF via iframe + print ────────────────
@@ -1212,13 +1215,11 @@ async function exportPDF() {
     download(pdfBytes, filename, 'application/pdf');
 
     // Remove progress indicator
-    const el = document.getElementById('pdf-progress');
-    if (el) el.remove();
+    if (progressBadge) progressBadge.remove();
     if (btn) { btn.textContent = 'Export Full Manual PDF'; btn.disabled = false; }
 
   } catch (err) {
-    const el = document.getElementById('pdf-progress');
-    if (el) el.textContent = 'PDF Error: ' + err.message;
+    if (progressBadge) progressBadge.textContent = 'PDF Error: ' + err.message;
     if (btn) { btn.textContent = 'Export Full Manual PDF'; btn.disabled = false; }
     console.error('PDF build error:', err);
   }
