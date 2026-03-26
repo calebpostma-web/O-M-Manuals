@@ -113,6 +113,12 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
 .ft-ok{background:rgba(26,107,60,.12);color:var(--success);} .ft-warn{background:rgba(180,83,9,.12);color:var(--warn);}
 .ft-miss{background:rgba(200,57,43,.12);color:var(--accent);} .ft-info{background:rgba(37,99,168,.1);color:var(--accent2);}
 .fl-detail{font-size:11.5px;color:var(--muted);line-height:1.5;}
+.tb-actions{display:flex;gap:2px;margin-left:6px;flex-shrink:0;}
+.tb-act{background:none;border:1px solid var(--rule);border-radius:3px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--muted);transition:all .15s;padding:0;line-height:1;}
+.tb-act:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(37,99,168,.06);}
+.tb-act.disabled{opacity:.25;cursor:default;pointer-events:none;}
+.tb-rename{font-family:var(--sans);font-size:12.5px;font-weight:600;background:none;border:none;border-bottom:1.5px dashed var(--rule);padding:0 2px 1px;color:var(--ink);cursor:text;flex:1;min-width:0;}
+.tb-rename:focus{outline:none;border-bottom-color:var(--accent2);}
 .mo{position:fixed;inset:0;background:rgba(26,26,46,.65);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
 .mo.hidden{display:none;}
 .modal{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:24px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
@@ -254,8 +260,6 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
   </div>
 </main>
 
-<iframe id="print-frame" style="position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;"></iframe>
-
 <script>
 const CB_SPEC=`O&M MANUAL SPEC (C+B Engineering Standard):
 FIXED: Cover Page, Index, Substantial Completion Letter (1-yr workmanship warranty).
@@ -270,6 +274,7 @@ let inventory=[];
 let structure=null;
 let finalReport=null;
 let passState={p1:'idle',p2:'idle',p3:'idle'};
+let specText=''; // extracted text from uploaded engineer spec files
 
 function loadSettings(){
   const s=localStorage.getItem('om_co_v3');if(s)company=JSON.parse(s);
@@ -329,12 +334,39 @@ function updateSizeMeter(){
   checkReady();
 }
 
+function getNewFiles(){
+  // Files in docFiles that haven't been inventoried yet
+  const inventoried = new Set(inventory.map(x => x.filename));
+  return docFiles.filter(f => !inventoried.has(f.name));
+}
+
 function checkReady(){
   const btn=document.getElementById('run-btn');
   const step1=document.getElementById('step1');
   const canStart=docFiles.length>0;
-  if(btn)btn.disabled=!canStart;
+  const newFiles = getNewFiles();
+
+  if(btn){
+    btn.disabled=!canStart;
+    if(passState.p1==='done' && newFiles.length > 0){
+      btn.textContent='Add ' + newFiles.length + ' New File' + (newFiles.length>1?'s':'') + ' & Rebuild';
+      btn.disabled=false;
+      btn.onclick=function(){ startIncremental(); };
+    } else if(passState.p1==='done' && structure===null && inventory.length > 0){
+      btn.textContent='Rebuild Structure (Pass 2)';
+      btn.disabled=false;
+      btn.onclick=function(){ runPass2(); };
+    } else {
+      btn.textContent='Begin Assembly';
+      btn.onclick=function(){ startAssembly(); };
+    }
+  }
   if(step1)step1.classList.toggle('disabled',!canStart);
+
+  // If we have a completed project and all files are re-uploaded, show the final manual
+  if(finalReport && docFiles.length > 0 && newFiles.length === 0){
+    renderFinalManual();
+  }
 }
 
 function renderSpecList(){
@@ -357,7 +389,23 @@ function renderDocList(){
   });
   updateSizeMeter();
 }
-function rmDoc(i){docFiles.splice(i,1);renderDocList();inventory=[];structure=null;finalReport=null;resetSteps();}
+function rmDoc(i){
+  const removed = docFiles[i];
+  docFiles.splice(i,1);
+  renderDocList();
+  // Remove from inventory if it was already processed
+  inventory = inventory.filter(x => x.filename !== removed.name);
+  structure=null;finalReport=null;
+  // If we still have inventory entries, keep Pass 1 done and enable re-run of Pass 2
+  if(inventory.length > 0 && passState.p1 === 'done'){
+    setStepState(1,'done','Done '+inventory.length+' files');
+    setStepState(2,'active','');
+    setStepState(3,'disabled','');
+    passState.p2='idle';passState.p3='idle';
+  } else {
+    resetSteps();
+  }
+}
 
 document.getElementById('spec-input').addEventListener('change',e=>{specFiles=[...specFiles,...Array.from(e.target.files)];renderSpecList();});
 document.getElementById('doc-input').addEventListener('change',e=>{docFiles=[...docFiles,...Array.from(e.target.files)];renderDocList();});
@@ -436,26 +484,72 @@ function parseJSON(raw){
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
+async function readSpecFiles(){
+  if(specFiles.length===0){specText='';return;}
+  const parts=[{type:'text',text:'You are reading an engineer\'s specification for an Operations & Maintenance Manual. Extract ALL requirements for what the manual must contain:\n- Required sections/tabs\n- Required documents per section (IOM, warranty, data sheet, startup report, etc.)\n- Formatting requirements\n- Any specific items called out (TAB report, fire test, as-builts, etc.)\n- Submission requirements\n- Number of copies or format requirements\n\nReturn the requirements as clear, structured text that can be used as a checklist. Be thorough — every requirement matters.'}];
+  for(const f of specFiles){
+    const ext=f.name.split('.').pop().toLowerCase();
+    if(ext==='pdf'){await safePdfBlock(parts,f);}
+    else if(['png','jpg','jpeg'].includes(ext)){const b64=await toB64(f);parts.push({type:'image',source:{type:'base64',media_type:ext==='jpg'?'image/jpeg':'image/'+ext,data:b64}});}
+    else{try{parts.push({type:'text',text:'--- '+f.name+' ---\n'+(await toText(f)).slice(0,15000)});}catch{}}
+  }
+  try{
+    const raw=await callAPI([{role:'user',content:parts}],3000);
+    specText=raw;
+  }catch(err){
+    console.error('Spec read error:',err);
+    specText=''; // fall back to CB_SPEC
+  }
+}
+
+function getSpecRequirements(){
+  if(specText) return 'ENGINEER SPEC REQUIREMENTS (extracted from uploaded spec):\n'+specText+'\n\nBASE SPEC (C+B Engineering Standard — use as fallback for anything not covered above):\n'+CB_SPEC;
+  return 'No engineer spec provided — using C+B Engineering Standard:\n'+CB_SPEC;
+}
+
 async function startAssembly(){
   document.getElementById('run-btn').disabled=true;
+  if(specFiles.length>0){
+    setContent('<div class="progress-card"><div class="pc-title">Reading Engineer Spec</div><div class="pc-sub">Extracting requirements from '+specFiles.map(f=>f.name).join(', ')+'...</div><div class="pwrap"><div class="pbar" style="width:50%;background:var(--accent2);"></div></div></div>');
+    await readSpecFiles();
+    await sleep(12000); // rate limit pause before Pass 1
+  }
   await runPass1();
 }
 
-async function runPass1(){
-  if(docFiles.length===0)return;
-  setStepState(1,'running','Reading...');
-  inventory=[];
+async function startIncremental(){
+  document.getElementById('run-btn').disabled=true;
+  const newFiles = getNewFiles();
+  if(newFiles.length === 0){ checkReady(); return; }
+  // Wipe structure/report — they'll be rebuilt in Pass 2
+  structure=null; finalReport=null;
+  passState.p2='idle'; passState.p3='idle';
+  setStepState(2,'disabled','');
+  setStepState(3,'disabled','');
+  await runPass1(newFiles);
+}
+
+async function runPass1(filesToProcess){
+  const files = filesToProcess || docFiles;
+  if(files.length===0)return;
+  const isIncremental = !!filesToProcess;
+  if(!isIncremental) setStepState(1,'running','Reading...');
+  else setStepState(1,'running','Adding '+files.length+'...');
+  if(!isIncremental) inventory=[];
   const projName=document.getElementById('proj-name').value||'this project';
   const projAddr=document.getElementById('proj-addr').value||'';
 
-  const progressItems=docFiles.map((f,i)=>
+  const progressItems=files.map((f,i)=>
     '<div class="pc-file" id="pf-'+i+'"><div class="pc-wait" id="pf-dot-'+i+'"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>'
   ).join('');
 
-  setContent('<div class="progress-card"><div class="pc-title">Pass 1 - Reading and Identifying ' + docFiles.length + ' Documents</div><div class="pc-sub">Reading the first 10 pages of each file to identify what it is, who made it, and what equipment it covers.</div>'+progressItems+'<div class="pwrap"><div class="pbar" id="p1-bar" style="width:0%"></div></div></div>');
+  const titleText = isIncremental
+    ? 'Pass 1 - Reading ' + files.length + ' New File' + (files.length>1?'s':'') + ' ('+inventory.length+' already identified)'
+    : 'Pass 1 - Reading and Identifying ' + files.length + ' Documents';
+  setContent('<div class="progress-card"><div class="pc-title">'+titleText+'</div><div class="pc-sub">Reading the first 10 pages of each file to identify what it is, who made it, and what equipment it covers.</div>'+progressItems+'<div class="pwrap"><div class="pbar" id="p1-bar" style="width:0%"></div></div></div>');
 
-  for(let i=0;i<docFiles.length;i++){
-    const f=docFiles[i];
+  for(let i=0;i<files.length;i++){
+    const f=files[i];
     const dot=document.getElementById('pf-dot-'+i);
     if(dot)dot.className='pc-spinner';
 
@@ -470,22 +564,23 @@ async function runPass1(){
     try{
       const raw=await callAPI([{role:'user',content:parts}],1200);
       const result=parseJSON(raw);
-      inventory.push(Object.assign({},result,{fileIndex:i,fileSize:f.size}));
+      inventory.push(Object.assign({},result,{fileIndex:docFiles.indexOf(f),fileSize:f.size}));
     }catch(err){
-      inventory.push({filename:f.name,docTypes:['unknown'],manufacturer:'',equipment:'',model:'',suggestedTab:'Unidentified',ambiguous:true,notes:'Could not process: '+err.message,fileIndex:i,fileSize:f.size});
+      inventory.push({filename:f.name,docTypes:['unknown'],manufacturer:'',equipment:'',model:'',suggestedTab:'Unidentified',ambiguous:true,notes:'Could not process: '+err.message,fileIndex:docFiles.indexOf(f),fileSize:f.size});
     }
 
     if(dot)dot.className='pc-done';
     const bar=document.getElementById('p1-bar');
-    if(bar)bar.style.width=Math.round(((i+1)/docFiles.length)*100)+'%';
+    if(bar)bar.style.width=Math.round(((i+1)/files.length)*100)+'%';
     // Pause between files to stay under rate limit (30k tokens/min)
-    if(i < docFiles.length-1) await sleep(12000);
+    if(i < files.length-1) await sleep(12000);
   }
 
   passState.p1='done';
   setStepState(1,'done','Done '+inventory.length+' files');
   setStepState(2,'active','');
   renderInventorySummary();
+  autoSaveProject();
   // Wait 15 seconds for rate limit token bucket to refill before Pass 2
   setContent(document.getElementById('content').innerHTML + '<div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;font-family:var(--mono);">Waiting 2 minutes before Pass 2 to allow rate limit to fully reset...</div>');
   await sleep(120000);
@@ -509,7 +604,7 @@ async function runPass2(){
   const projNum=document.getElementById('proj-number').value||'';
   const projDate=document.getElementById('proj-date').value||new Date().toISOString().slice(0,10);
   const dateStr=new Date(projDate+'T12:00:00').toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
-  const specContext=specFiles.length>0?'Engineer spec files provided: '+specFiles.map(f=>f.name).join(', '):'No engineer spec - using C+B Engineering Standard:\n'+CB_SPEC;
+  const specContext=getSpecRequirements();
 
   // Format a single inventory item as compact text
   function fmtItem(item,i){
@@ -550,7 +645,7 @@ async function runPass2(){
 
       // Consolidation call — merge all partial tabs into final structure
       await sleep(20000);
-      const consolidatePrompt = 'You are finalizing an O&M Manual structure.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nThese tabs were identified across multiple batches. Merge them into a clean final structure:\n- Combine any tabs that should be together (same manufacturer/equipment)\n- Number tabs sequentially\n- Ensure as-built drawings go last\n- Ensure TAB report and fire suppression each have their own tab\n- Build the complete index\n- Flag any global missing items required by spec\n\nSPEC REQUIREMENTS:\n'+CB_SPEC+'\n\nBATCH RESULTS:\n'+JSON.stringify(partialTabs,null,2)+'\n\nReturn ONLY valid JSON in this exact format:\n{"manualTitle":"Operations & Maintenance Manual","projectName":"'+projName+'","projectAddress":"'+projAddr+'","projectNumber":"'+projNum+'","date":"'+dateStr+'","tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["file.pdf"],"documentSummary":"Brief summary.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"fixedSections":{"coverPage":{"line1":"'+projAddr+'","line2":"'+projName+'","line3":"Operation & Maintenance Manual"},"indexItems":["Substantial Completion Letter"],"substantialCompletionLetter":{"equipmentSummary":"Summary of what was installed."}},"missingItems":["Global missing items"],"ambiguousFiles":[],"notes":"Any observations"}';
+      const consolidatePrompt = 'You are finalizing an O&M Manual structure.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nThese tabs were identified across multiple batches. Merge them into a clean final structure:\n- Combine any tabs that should be together (same manufacturer/equipment)\n- Number tabs sequentially\n- Ensure as-built drawings go last\n- Ensure TAB report and fire suppression each have their own tab\n- Build the complete index\n- Flag any global missing items required by spec\n\nSPEC REQUIREMENTS:\n'+getSpecRequirements()+'\n\nBATCH RESULTS:\n'+JSON.stringify(partialTabs,null,2)+'\n\nReturn ONLY valid JSON in this exact format:\n{"manualTitle":"Operations & Maintenance Manual","projectName":"'+projName+'","projectAddress":"'+projAddr+'","projectNumber":"'+projNum+'","date":"'+dateStr+'","tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["file.pdf"],"documentSummary":"Brief summary.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"fixedSections":{"coverPage":{"line1":"'+projAddr+'","line2":"'+projName+'","line3":"Operation & Maintenance Manual"},"indexItems":["Substantial Completion Letter"],"substantialCompletionLetter":{"equipmentSummary":"Summary of what was installed."}},"missingItems":["Global missing items"],"ambiguousFiles":[],"notes":"Any observations"}';
 
       const raw2 = await callAPI([{role:'user',content:[{type:'text',text:consolidatePrompt}]}],4000);
       structure = parseJSON(raw2);
@@ -559,9 +654,10 @@ async function runPass2(){
     passState.p2='done';
     setStepState(2,'done','Done '+(structure.tabs&&structure.tabs.length||0)+' tabs');
     setStepState(3,'active','');
+    autoSaveProject();
     const needsPass3=(structure.ambiguousFiles&&structure.ambiguousFiles.length>0)||inventory.some(x=>x.ambiguous);
     if(needsPass3){await sleep(30000);await runPass3();}
-    else{passState.p3='done';setStepState(3,'done','Complete');finalReport=structure;renderFinalManual();}
+    else{passState.p3='done';setStepState(3,'done','Complete');finalReport=structure;renderFinalManual();autoSaveProject();}
   }catch(err){
     setStepState(2,'disabled','');
     setContent('<div class="progress-card"><div class="pc-title" style="color:var(--accent)">Pass 2 Error</div><div style="font-size:12px;color:var(--muted);margin-top:6px;">'+esc(err.message)+'</div></div>');
@@ -593,7 +689,7 @@ async function runPass3(){
     }catch{}
   }
 
-  const checkPrompt='Final completeness check.\nTabs built: '+JSON.stringify(structure&&structure.tabs&&structure.tabs.map(t=>({tab:t.tabName,files:t.files,missing:t.missingItems})))+'\n\nSpec: '+CB_SPEC+'\n\nList remaining gaps.\nReturn JSON: {"allComplete":false,"remainingGaps":["Specific missing item"],"recommendations":["Actionable step"]}';
+  const checkPrompt='Final completeness check.\nTabs built: '+JSON.stringify(structure&&structure.tabs&&structure.tabs.map(t=>({tab:t.tabName,files:t.files,missing:t.missingItems})))+'\n\nSpec: '+getSpecRequirements()+'\n\nList remaining gaps.\nReturn JSON: {"allComplete":false,"remainingGaps":["Specific missing item"],"recommendations":["Actionable step"]}';
   try{
     const raw=await callAPI([{role:'user',content:[{type:'text',text:checkPrompt}]}],1000);
     const check=parseJSON(raw);
@@ -604,6 +700,7 @@ async function runPass3(){
   setStepState(3,'done','Complete');
   finalReport=structure;
   renderFinalManual();
+  autoSaveProject();
 }
 
 function renderFinalManual(){
@@ -620,7 +717,7 @@ function renderFinalManual(){
 
   tabs.forEach((tab,i)=>{
     const hasMissing=(tab.missingItems&&tab.missingItems.length||0)>0;
-    html+='<div class="tab-block"><div class="tb-header" onclick="toggleTab('+i+')"><div class="tb-num">'+(tab.tabNumber||i+1)+'</div><span class="tb-name">'+esc(tab.tabName)+'</span><div class="tb-badges">'+((tab.presentItems&&tab.presentItems.length||0)>0?'<span class="tbb tbb-ok">'+( tab.presentItems&&tab.presentItems.length)+' present</span>':'')+(hasMissing?'<span class="tbb tbb-miss">'+(tab.missingItems&&tab.missingItems.length)+' missing</span>':'')+'</div></div><div class="tb-body" id="tbb-'+i+'"><div class="file-line fl-info"><span class="fl-ic">S</span><div><span class="fl-tag ft-info">SECTION COVER PAGE</span><div class="fl-detail">Generated: '+esc((tab.sectionCoverLines||[]).join(' | '))+'</div></div></div>';
+    html+='<div class="tab-block"><div class="tb-header" onclick="toggleTab('+i+')"><div class="tb-num">'+(tab.tabNumber||i+1)+'</div><input class="tb-rename" value="'+esc(tab.tabName)+'" onchange="renameTab('+i+',this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onfocus="event.stopPropagation()"/><div class="tb-actions"><button class="tb-act'+(i===0?' disabled':'')+'" onclick="event.stopPropagation();moveTabUp('+i+')" title="Move up">&#9650;</button><button class="tb-act'+(i===tabs.length-1?' disabled':'')+'" onclick="event.stopPropagation();moveTabDown('+i+')" title="Move down">&#9660;</button></div><div class="tb-badges">'+((tab.presentItems&&tab.presentItems.length||0)>0?'<span class="tbb tbb-ok">'+( tab.presentItems&&tab.presentItems.length)+' present</span>':'')+(hasMissing?'<span class="tbb tbb-miss">'+(tab.missingItems&&tab.missingItems.length)+' missing</span>':'')+'</div></div><div class="tb-body" id="tbb-'+i+'"><div class="file-line fl-info"><span class="fl-ic">S</span><div><span class="fl-tag ft-info">SECTION COVER PAGE</span><div class="fl-detail">Generated: '+esc((tab.sectionCoverLines||[]).join(' | '))+'</div></div></div>';
     (tab.files||[]).forEach(fname=>{
       const inv=inventory.find(x=>x.filename===fname);
       html+='<div class="file-line fl-ok"><span class="fl-ic">D</span><div><span class="fl-tag ft-ok">FILE</span><div class="fl-detail"><strong>'+esc(fname)+'</strong>'+(inv?' - '+esc(inv.equipment||inv.docTypes&&inv.docTypes[0]||'')+(inv.notes?' | '+esc(inv.notes):''):'')+' </div></div></div>';
@@ -639,10 +736,125 @@ function renderFinalManual(){
 }
 
 function toggleTab(id){const b=document.getElementById('tbb-'+id);if(b)b.classList.toggle('open');}
+
+function moveTabUp(i){
+  if(!finalReport||!finalReport.tabs||i<=0)return;
+  const tabs=finalReport.tabs;
+  [tabs[i-1],tabs[i]]=[tabs[i],tabs[i-1]];
+  // Renumber
+  tabs.forEach((t,idx)=>{t.tabNumber=idx+1;});
+  renderFinalManual();
+  autoSaveProject();
+}
+
+function moveTabDown(i){
+  if(!finalReport||!finalReport.tabs||i>=finalReport.tabs.length-1)return;
+  const tabs=finalReport.tabs;
+  [tabs[i],tabs[i+1]]=[tabs[i+1],tabs[i]];
+  tabs.forEach((t,idx)=>{t.tabNumber=idx+1;});
+  renderFinalManual();
+  autoSaveProject();
+}
+
+function renameTab(i,newName){
+  if(!finalReport||!finalReport.tabs||!finalReport.tabs[i])return;
+  newName=newName.trim();
+  if(!newName)return;
+  const tab=finalReport.tabs[i];
+  tab.tabName=newName;
+  // Update section cover lines — replace manufacturer/equipment with new name parts
+  const parts=newName.split(/\s*[-–—]\s*/);
+  if(parts.length>=2){
+    tab.manufacturer=parts[0].trim();
+    tab.equipment=parts.slice(1).join(' — ').trim();
+  }
+  if(tab.sectionCoverLines&&tab.sectionCoverLines.length>=4){
+    tab.sectionCoverLines[2]=tab.manufacturer||'';
+    tab.sectionCoverLines[3]=tab.equipment||'';
+  }
+  // Don't re-render — the input is inline and the user is still editing
+  autoSaveProject();
+}
+
+// ── PROJECT SAVE / RESUME ────────────────────────────────────────────────
+function autoSaveProject(){
+  try{
+    const projName=document.getElementById('proj-name').value||'';
+    if(!projName&&!inventory.length)return; // nothing to save
+    const save={
+      version:1,
+      savedAt:new Date().toISOString(),
+      projectFields:{
+        name:document.getElementById('proj-name').value||'',
+        number:document.getElementById('proj-number').value||'',
+        address:document.getElementById('proj-addr').value||'',
+        engineer:document.getElementById('proj-engineer').value||'',
+        engEmail:document.getElementById('proj-eng-email').value||'',
+        date:document.getElementById('proj-date').value||''
+      },
+      inventory:inventory,
+      structure:structure,
+      finalReport:finalReport,
+      specText:specText,
+      passState:passState,
+      fileManifest:docFiles.map(f=>({name:f.name,size:f.size}))
+    };
+    localStorage.setItem('om_project_save',JSON.stringify(save));
+  }catch(e){console.error('Auto-save failed:',e);}
+}
+
+function loadSavedProject(){
+  try{
+    const raw=localStorage.getItem('om_project_save');
+    if(!raw)return false;
+    const save=JSON.parse(raw);
+    if(!save.inventory||!save.inventory.length)return false;
+
+    // Restore project fields
+    const pf=save.projectFields||{};
+    if(pf.name)document.getElementById('proj-name').value=pf.name;
+    if(pf.number)document.getElementById('proj-number').value=pf.number;
+    if(pf.address)document.getElementById('proj-addr').value=pf.address;
+    if(pf.engineer)document.getElementById('proj-engineer').value=pf.engineer;
+    if(pf.engEmail)document.getElementById('proj-eng-email').value=pf.engEmail;
+    if(pf.date)document.getElementById('proj-date').value=pf.date;
+
+    // Restore state
+    inventory=save.inventory||[];
+    structure=save.structure||null;
+    finalReport=save.finalReport||null;
+    specText=save.specText||'';
+    passState=save.passState||{p1:'idle',p2:'idle',p3:'idle'};
+
+    // Restore step UI
+    if(passState.p1==='done')setStepState(1,'done','Done '+inventory.length+' files');
+    if(passState.p2==='done')setStepState(2,'done','Done '+(structure&&structure.tabs?structure.tabs.length:0)+' tabs');
+    if(passState.p3==='done')setStepState(3,'done','Complete');
+
+    // Show resume prompt
+    const manifest=save.fileManifest||[];
+    const savedTime=save.savedAt?new Date(save.savedAt).toLocaleString():'unknown time';
+    const projLabel=pf.name||'Untitled Project';
+    setContent('<div class="progress-card"><div class="pc-title">Saved Project Found — '+esc(projLabel)+'</div><div class="pc-sub">Last saved: '+esc(savedTime)+' · '+inventory.length+' files identified'+(finalReport?' · Ready to export':'')+'</div><div style="margin:12px 0;font-size:11px;color:var(--muted);line-height:1.7;">To export the PDF, re-upload the same project files below. Files already identified will be skipped — no API calls needed.</div><div style="margin-top:6px;"><strong style="font-size:11px;">Expected files:</strong></div>'+manifest.map(f=>'<div class="pc-file"><div class="pc-wait"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>').join('')+'<div style="margin-top:12px;display:flex;gap:8px;"><button class="run-btn" style="width:auto;padding:9px 20px;" onclick="clearSavedProject()">Start Fresh Instead</button></div></div>');
+
+    if(finalReport)checkReady();
+    return true;
+  }catch(e){console.error('Load save failed:',e);return false;}
+}
+
+function clearSavedProject(){
+  localStorage.removeItem('om_project_save');
+  inventory=[];structure=null;finalReport=null;specText='';
+  passState={p1:'idle',p2:'idle',p3:'idle'};
+  resetSteps();
+  setContent('<div class="empty-state"><div class="erule"></div><h2>O&amp;M Manual Assembly</h2><p>Upload spec and project documents to begin.</p></div>');
+}
 function setContent(html){document.getElementById('content').innerHTML=html;}
 
 function clearAll(){
-  specFiles=[];docFiles=[];inventory=[];structure=null;finalReport=null;
+  specFiles=[];docFiles=[];inventory=[];structure=null;finalReport=null;specText='';
+  passState={p1:'idle',p2:'idle',p3:'idle'};
+  localStorage.removeItem('om_project_save');
   renderSpecList();renderDocList();resetSteps();
   document.getElementById('spec-input').value='';document.getElementById('doc-input').value='';
   setContent('<div class="empty-state"><div class="erule"></div><h2>O&amp;M Manual Assembly</h2><p>Upload spec and project documents to begin.</p></div>');
@@ -650,123 +862,6 @@ function clearAll(){
 </script>
 
 <script>
-function buildPrintHTML(){
-  if(!finalReport)return'';
-  const projName=finalReport.projectName||document.getElementById('proj-name').value||'O&M Manual';
-  const projAddr=finalReport.projectAddress||document.getElementById('proj-addr').value||'';
-  const projNum=finalReport.projectNumber||document.getElementById('proj-number').value||'';
-  const projEng=document.getElementById('proj-engineer').value||'';
-  const dateStr=finalReport.date||new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
-  const printDate=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
-  const tabs=finalReport.tabs||[];
-
-  const logoTag=logoDataUrl
-    ?'<img src="'+logoDataUrl+'" style="max-height:56px;max-width:200px;object-fit:contain;">'
-    :'<div style="font-size:18pt;font-weight:700;color:#1a1a2e;font-family:Georgia,serif;">'+esc(company.name||'')+'</div>';
-
-  const coInfo=[company.address,company.city,company.phone?'Tel: '+company.phone:'',company.email].filter(Boolean).join('<br>');
-
-  const css=`<style>
-  @page{margin:0;size:letter;}
-  body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a2e;margin:0;padding:0;}
-  .pg{width:8.5in;min-height:11in;page-break-after:always;position:relative;overflow:hidden;display:flex;flex-direction:column;}
-  .pg:last-child{page-break-after:auto;}
-  .cover-pg{background:#f5f2eb;}
-  .cover-top{display:flex;justify-content:space-between;align-items:flex-start;padding:0.5in 0.6in 0.3in;border-bottom:3px solid #c8392b;}
-  .cover-co{font-size:8.5pt;color:#7a7567;line-height:1.7;text-align:right;}
-  .cover-body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0.5in;}
-  .cover-rule{width:60px;height:4px;background:#c8392b;margin:0 auto 20px;}
-  .cover-addr{font-size:11pt;color:#7a7567;margin-bottom:8px;}
-  .cover-proj{font-size:28pt;font-weight:700;font-family:Georgia,serif;line-height:1.15;color:#1a1a2e;margin-bottom:10px;}
-  .cover-type{font-size:14pt;color:#7a7567;font-family:Georgia,serif;}
-  .cover-meta{font-size:10pt;color:#7a7567;margin-top:8px;}
-  .cover-bot{margin-top:auto;}
-  .cover-stripe{height:8px;background:#c8392b;}
-  .sc-pg{background:#1a1a2e;color:#f5f2eb;}
-  .sc-top{padding:0.5in 0.6in 0.3in;border-bottom:3px solid #c8392b;}
-  .sc-logo img{filter:brightness(0) invert(1);max-height:50px;max-width:180px;object-fit:contain;}
-  .sc-body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0.5in;}
-  .sc-l{margin-bottom:10px;}
-  .sc-l0{font-size:11pt;color:rgba(245,242,235,.55);}
-  .sc-l1{font-size:22pt;font-weight:700;font-family:Georgia,serif;color:#f5f2eb;}
-  .sc-l2{font-size:16pt;font-family:Georgia,serif;color:rgba(245,242,235,.8);margin-top:8px;}
-  .sc-l3{font-size:14pt;color:rgba(245,242,235,.65);}
-  .sc-tab{position:absolute;bottom:0.7in;right:0.6in;font-size:10pt;color:rgba(245,242,235,.4);font-family:monospace;letter-spacing:1px;}
-  .sc-bot{margin-top:auto;}
-  .pg-hdr{display:flex;justify-content:space-between;align-items:center;padding:0.35in 0.6in 0.2in;}
-  .pg-proj{font-size:9pt;color:#7a7567;text-align:right;}
-  .pg-rule{height:2px;background:#1a1a2e;margin:0 0.6in 0.25in;}
-  .pg-title{font-family:Georgia,serif;font-size:18pt;font-weight:700;padding:0 0.6in;margin-bottom:0.2in;}
-  .idx-tbl{width:calc(100% - 1.2in);margin:0 0.6in;border-collapse:collapse;}
-  .idx-tbl th{background:#1a1a2e;color:#f5f2eb;padding:7px 10px;font-size:9pt;text-align:left;}
-  .idx-tbl td{padding:8px 10px;font-size:9.5pt;border-bottom:1px solid #d4cfc4;}
-  .idx-tbl tr:nth-child(even) td{background:#faf9f6;}
-  .tab-cell{font-family:monospace;font-weight:700;width:60px;}
-  .letter-body{padding:0 0.6in;flex:1;}
-  .ltr-from{font-size:9pt;color:#7a7567;line-height:1.7;margin-bottom:0.2in;}
-  .ltr-date{font-size:10pt;margin-bottom:0.2in;}
-  .ltr-to{font-size:10pt;line-height:1.6;margin-bottom:0.15in;}
-  .ltr-re{font-size:10pt;margin-bottom:0.25in;}
-  .ltr-txt p{font-size:10pt;line-height:1.7;margin-bottom:12px;}
-  .ltr-sig{margin-top:0.4in;}
-  .sig-line{border-top:1px solid #1a1a2e;width:3in;margin-bottom:6px;}
-  .sig-name{font-size:11pt;font-weight:600;}
-  .sig-co{font-size:10pt;color:#7a7567;}
-  .sig-title{font-size:9pt;color:#7a7567;}
-  .content-pg{}
-  .tab-sec-hdr{display:flex;align-items:center;gap:12px;padding:0 0.6in 0.15in;}
-  .tab-num-badge{background:#1a1a2e;color:#f5f2eb;padding:4px 10px;border-radius:3px;font-size:9pt;font-family:monospace;font-weight:700;}
-  .tab-sec-name{font-family:Georgia,serif;font-size:16pt;font-weight:700;}
-  .tab-sum{font-size:9.5pt;color:#7a7567;padding:0 0.6in 0.15in;line-height:1.6;}
-  .ct{width:calc(100% - 1.2in);margin:0 0.6in;border-collapse:collapse;}
-  .ct th{background:#1a1a2e;color:#f5f2eb;padding:6px 10px;font-size:8.5pt;text-align:left;}
-  .ct td{padding:7px 10px;font-size:9pt;border-bottom:1px solid #d4cfc4;}
-  .ct tr:nth-child(even) td{background:#faf9f6;}
-  .st-ok{color:#1a6b3c;font-weight:600;} .st-miss{color:#c8392b;font-weight:600;}
-  .pg-ftr{display:flex;justify-content:space-between;font-size:7.5pt;color:#7a7567;padding:0.15in 0.6in 0.2in;margin-top:auto;border-top:1px solid #d4cfc4;}
-  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
-  </style>`;
-
-  let pages='';
-
-  // COVER
-  pages+='<div class="pg cover-pg"><div class="cover-top"><div>'+logoTag+'</div><div class="cover-co">'+coInfo+'</div></div><div class="cover-body"><div class="cover-rule"></div>'+(projAddr?'<div class="cover-addr">'+esc(projAddr)+'</div>':'')+'<div class="cover-proj">'+esc(projName)+'</div><div class="cover-type">Operation &amp; Maintenance Manual</div><div class="cover-rule" style="margin-top:24px;"></div><div class="cover-meta">'+(projNum?'Job #'+esc(projNum)+' &nbsp;&middot;&nbsp; ':'')+esc(dateStr)+(projEng?' &nbsp;&middot;&nbsp; '+esc(projEng):'')+' </div></div><div class="cover-bot"><div class="cover-stripe"></div></div></div>';
-
-  // INDEX
-  const indexRows='<tr><td class="tab-cell">&mdash;</td><td>Substantial Completion / Warranty Letter</td></tr>'+tabs.map((t,i)=>'<tr><td class="tab-cell">'+(i+1)+'</td><td>'+esc(t.tabName)+'</td></tr>').join('');
-  pages+='<div class="pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><h2 class="pg-title">Index</h2><table class="idx-tbl"><thead><tr><th>Tab</th><th>Section</th></tr></thead><tbody>'+indexRows+'</tbody></table><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
-
-  // SUBSTANTIAL COMPLETION LETTER
-  const scl=finalReport.fixedSections&&finalReport.fixedSections.substantialCompletionLetter;
-  const sclDate=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
-  pages+='<div class="pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><div class="letter-body"><div class="ltr-from">'+esc(company.address||'')+'<br>'+esc(company.city||'')+'<br>'+esc(company.phone||'')+'</div><div class="ltr-date">'+esc(sclDate)+'</div><div class="ltr-to"><strong>'+esc(projName)+'</strong><br>'+esc(projAddr)+'</div><div class="ltr-re"><strong>RE: Substantial Completion / Commissioning of Units / Occupancy</strong></div><div class="ltr-txt"><p>This letter acknowledges that all equipment installed at '+esc(projName)+' has been completed in accordance with the manufacturer\'s instructions. '+esc((scl&&scl.equipmentSummary)||'All mechanical equipment has been commissioned and is operating as per specifications, plans and change orders.')+'</p><p>We, the undersigned, guarantee our workmanship on the subject project for a period of one (1) year from the date of substantial completion. All equipment is warranted as per the manufacturer\'s warranty.</p><p>All labor and materials furnished, as well as work performed by us, comply with the contract plans, specifications, and any authorized alterations or additions. Should any defects arise during the contract guarantee period due to improper materials or workmanship, we agree to remedy them, along with any affected work, upon written notice.</p></div><div class="ltr-sig">'+(sigDataUrl?'<div style="margin-bottom:4px;"><img src="'+sigDataUrl+'" style="max-height:72px;max-width:220px;object-fit:contain;display:block;"></div>':'')+'<div class="sig-line"></div><div class="sig-name">'+esc(company.preparedby||'')+'</div><div class="sig-co">'+esc(company.name||'')+'</div>'+(company.title?'<div class="sig-title">'+esc(company.title)+'</div>':'')+' </div></div><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
-
-  // TAB SECTIONS
-  tabs.forEach((tab,i)=>{
-    const coverLines=tab.sectionCoverLines||[projAddr,projName,tab.manufacturer||'',tab.equipment||''];
-    // Section cover page
-    pages+='<div class="pg sc-pg"><div class="sc-top"><div class="sc-logo">'+logoTag+'</div></div><div class="sc-body">'+coverLines.map((line,li)=>line?'<div class="sc-l sc-l'+li+'">'+esc(line)+'</div>':'').join('')+'</div><div class="sc-tab">Tab '+(tab.tabNumber||i+1)+'</div><div class="sc-bot"><div class="cover-stripe"></div></div></div>';
-
-    // Content page
-    const presItems=tab.presentItems||[];
-    const missItems=tab.missingItems||[];
-    // PDF only shows present items — missing items appear in the tool UI only, not in the printed document
-    const rows=presItems.map(item=>{
-      const file=(tab.files||[]).find(fn=>{const inv=inventory.find(x=>x.filename===fn);return inv&&((inv.docTypes||[]).some(d=>d.toLowerCase().includes(item.toLowerCase()))||item.toLowerCase().includes(((inv.docTypes||[''])[0]||'').toLowerCase()));
-      })||((tab.files||[])[0]||'');
-      return '<tr><td>'+esc(item)+'</td><td style="font-family:monospace;font-size:8pt;">'+esc(file)+'</td></tr>';
-    }).join('');
-
-    pages+='<div class="pg content-pg"><div class="pg-hdr"><div>'+logoTag+'</div><div class="pg-proj">'+esc(projName)+(projNum?' &mdash; Job #'+esc(projNum):'')+' </div></div><div class="pg-rule"></div><div class="tab-sec-hdr"><div class="tab-num-badge">Tab '+(tab.tabNumber||i+1)+'</div><h2 class="tab-sec-name">'+esc(tab.tabName)+'</h2></div>'+(tab.documentSummary?'<p class="tab-sum">'+esc(tab.documentSummary)+'</p>':'')+'<table class="ct"><thead><tr><th>Document</th><th>File</th></tr></thead><tbody>'+rows+'</tbody></table><div class="pg-ftr"><span>'+esc(company.name||'')+'</span><span>Tab '+(tab.tabNumber||i+1)+' &mdash; '+esc(tab.tabName)+'</span><span>Printed '+esc(printDate)+'</span></div></div>';
-  });
-
-  // Missing items are shown in the tool UI only — the PDF is the clean deliverable for the engineer
-
-  return'<!DOCTYPE html><html><head><meta charset="UTF-8">'+css+'</head><body>'+pages+'</body></html>';
-}
-
-// exportPDF replaced by buildAndMergeFullPDF below
-
 function openOutlook(){
   if(!finalReport)return;
   const projName=finalReport.projectName||document.getElementById('proj-name').value||'O&M Manual';
@@ -783,7 +878,10 @@ function openOutlook(){
 
 loadSettings();
 checkReady();
-if(!localStorage.getItem('om_co_v3')){setTimeout(()=>{if(confirm('Set up your company info? Takes 30 seconds and appears on every manual.'))openModal();},800);}
+// Try to resume a saved project
+if(!loadSavedProject()){
+  if(!localStorage.getItem('om_co_v3')){setTimeout(()=>{if(confirm('Set up your company info? Takes 30 seconds and appears on every manual.'))openModal();},800);}
+}
 </script>
 <script>
 // ── FULL PDF MERGE ENGINE ─────────────────────────────────────────────────────
@@ -978,45 +1076,59 @@ async function exportPDF() {
       page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
     }
 
-    // ── PAGE 2: INDEX ────────────────────────────────────────────────────────
+    // ── PAGE 2+: INDEX (paginated) ──────────────────────────────────────────
     prog('index page');
     {
-      const page = mergedPdf.addPage([W, H]);
+      const FOOTER_Y = 58; // stop drawing content above this
+      const ROW_H = 22;
+      const projHeader = projName + (projNum ? ' — Job #' + projNum : '');
+
+      function drawIndexHeader(pg, isFirst) {
+        pg.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+        drawLogo(pg, M, H - 26, 160, 50);
+        pg.drawText(projHeader, { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
+        pg.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
+        if (isFirst) pg.drawText('Index', { x: M, y: H - 100, size: 22, font: timesRoman, color: INK });
+        const tableTop = isFirst ? H - 128 : H - 86;
+        pg.drawRectangle({ x: M, y: tableTop - 20, width: W - M * 2, height: 22, color: INK });
+        pg.drawText('Tab', { x: M + 8, y: tableTop - 14, size: 9, font: helveticaBold, color: WHITE });
+        pg.drawText('Section', { x: M + 70, y: tableTop - 14, size: 9, font: helveticaBold, color: WHITE });
+        return tableTop - 40;
+      }
+      function drawIndexFooter(pg) {
+        pg.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
+        pg.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
+        pg.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+      }
+
+      let curPage = mergedPdf.addPage([W, H]);
       bookmarks.push({ title: 'Index', pageIndex: pageIdx, children: [] });
       pageIdx++;
-      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+      let ry = drawIndexHeader(curPage, true);
+      let rowCount = 0;
 
-      // Header
-      drawLogo(page, M, H - 26, 160, 50);
-      page.drawText(projName + (projNum ? ' — Job #' + projNum : ''), { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
-      page.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
-
-      // Title
-      page.drawText('Index', { x: M, y: H - 100, size: 22, font: timesRoman, color: INK });
-
-      // Table header
-      const tableTop = H - 128;
-      page.drawRectangle({ x: M, y: tableTop - 20, width: W - M * 2, height: 22, color: INK });
-      page.drawText('Tab', { x: M + 8, y: tableTop - 14, size: 9, font: helveticaBold, color: WHITE });
-      page.drawText('Section', { x: M + 70, y: tableTop - 14, size: 9, font: helveticaBold, color: WHITE });
-
-      // Table rows
       const indexRows = [
         { tab: '—', name: 'Substantial Completion / Warranty Letter' },
         ...tabs.map((t, i) => ({ tab: String(t.tabNumber || i + 1), name: t.tabName }))
       ];
 
-      indexRows.forEach((row, i) => {
-        const ry = tableTop - 40 - i * 22;
-        if (i % 2 === 1) page.drawRectangle({ x: M, y: ry - 6, width: W - M * 2, height: 22, color: rgb(0.98, 0.973, 0.957) });
-        page.drawText(row.tab, { x: M + 8, y: ry, size: 9.5, font: helveticaBold, color: INK });
-        page.drawText(row.name, { x: M + 70, y: ry, size: 9.5, font: helvetica, color: INK });
-      });
+      for (let i = 0; i < indexRows.length; i++) {
+        if (ry < FOOTER_Y) {
+          drawIndexFooter(curPage);
+          curPage = mergedPdf.addPage([W, H]);
+          pageIdx++;
+          ry = drawIndexHeader(curPage, false);
+          rowCount = 0;
+        }
+        const row = indexRows[i];
+        if (rowCount % 2 === 1) curPage.drawRectangle({ x: M, y: ry - 6, width: W - M * 2, height: 22, color: rgb(0.98, 0.973, 0.957) });
+        curPage.drawText(row.tab, { x: M + 8, y: ry, size: 9.5, font: helveticaBold, color: INK });
+        curPage.drawText(row.name, { x: M + 70, y: ry, size: 9.5, font: helvetica, color: INK });
+        ry -= ROW_H;
+        rowCount++;
+      }
 
-      // Footer
-      page.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
-      page.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
-      page.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+      drawIndexFooter(curPage);
     }
 
     // ── PAGE 3: SUBSTANTIAL COMPLETION LETTER ────────────────────────────────
@@ -1139,62 +1251,77 @@ async function exportPDF() {
         page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
       }
 
-      // Content listing page
+      // Content listing page(s) — paginated
       {
-        const page = mergedPdf.addPage([W, H]);
-        tabBookmark.children.push({ title: 'Content Listing', pageIndex: pageIdx });
-        pageIdx++;
-        page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
-
-        // Header
-        drawLogo(page, M, H - 26, 160, 50);
-        page.drawText(projName + (projNum ? ' — Job #' + projNum : ''), { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
-        page.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
-
-        // Tab badge + section name
+        const FOOTER_Y = 58;
+        const ROW_H = 20;
         const badge = 'Tab ' + (tab.tabNumber || ti + 1);
-        page.drawRectangle({ x: M, y: H - 100, width: helveticaBold.widthOfTextAtSize(badge, 9) + 16, height: 18, color: INK, borderRadius: 2 });
-        page.drawText(badge, { x: M + 8, y: H - 95, size: 9, font: helveticaBold, color: WHITE });
-        page.drawText(tab.tabName, { x: M + helveticaBold.widthOfTextAtSize(badge, 9) + 26, y: H - 96, size: 16, font: timesRoman, color: INK });
+        const projHeader = projName + (projNum ? ' — Job #' + projNum : '');
+        const footMid = 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName;
 
-        // Summary
-        if (tab.documentSummary) {
-          const sumLines = wrapText(tab.documentSummary, W - M * 2, helvetica, 9.5);
-          sumLines.forEach((ln, i) => {
-            page.drawText(ln, { x: M, y: H - 120 - i * 13, size: 9.5, font: helvetica, color: MUTED });
-          });
+        function drawContentHeader(pg, isFirst) {
+          pg.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+          drawLogo(pg, M, H - 26, 160, 50);
+          pg.drawText(projHeader, { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
+          pg.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
+          let startY = H - 86;
+          if (isFirst) {
+            pg.drawRectangle({ x: M, y: H - 100, width: helveticaBold.widthOfTextAtSize(badge, 9) + 16, height: 18, color: INK, borderRadius: 2 });
+            pg.drawText(badge, { x: M + 8, y: H - 95, size: 9, font: helveticaBold, color: WHITE });
+            pg.drawText(tab.tabName, { x: M + helveticaBold.widthOfTextAtSize(badge, 9) + 26, y: H - 96, size: 16, font: timesRoman, color: INK });
+            startY = H - 115;
+            if (tab.documentSummary) {
+              const sumLines = wrapText(tab.documentSummary, W - M * 2, helvetica, 9.5);
+              sumLines.forEach((ln, si) => {
+                pg.drawText(ln, { x: M, y: startY - si * 13, size: 9.5, font: helvetica, color: MUTED });
+              });
+              startY -= sumLines.length * 13 + 10;
+            }
+          }
+          // Table header row
+          pg.drawRectangle({ x: M, y: startY - 18, width: W - M * 2, height: 20, color: INK });
+          pg.drawText('Document', { x: M + 8, y: startY - 12, size: 8.5, font: helveticaBold, color: WHITE });
+          pg.drawText('File', { x: M + 180, y: startY - 12, size: 8.5, font: helveticaBold, color: WHITE });
+          return startY - 38;
+        }
+        function drawContentFooter(pg) {
+          const cx = W / 2;
+          pg.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
+          pg.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
+          pg.drawText(footMid, { x: cx - helvetica.widthOfTextAtSize(footMid, 7.5) / 2, y: 22, size: 7.5, font: helvetica, color: MUTED });
+          pg.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
         }
 
-        // Document table — only present items
-        let ty = H - 150;
-        page.drawRectangle({ x: M, y: ty - 18, width: W - M * 2, height: 20, color: INK });
-        page.drawText('Document', { x: M + 8, y: ty - 12, size: 8.5, font: helveticaBold, color: WHITE });
-        page.drawText('File', { x: M + 180, y: ty - 12, size: 8.5, font: helveticaBold, color: WHITE });
-        ty -= 38;
+        let curPage = mergedPdf.addPage([W, H]);
+        tabBookmark.children.push({ title: 'Content Listing', pageIndex: pageIdx });
+        pageIdx++;
+        let ty = drawContentHeader(curPage, true);
+        let rowCount = 0;
 
         const presItems = tab.presentItems || [];
-        presItems.forEach((item, ri) => {
-          if (ri % 2 === 0) page.drawRectangle({ x: M, y: ty - 5, width: W - M * 2, height: 20, color: rgb(0.98, 0.973, 0.957) });
-          // Find matching file
+        for (let ri = 0; ri < presItems.length; ri++) {
+          if (ty < FOOTER_Y) {
+            drawContentFooter(curPage);
+            curPage = mergedPdf.addPage([W, H]);
+            pageIdx++;
+            ty = drawContentHeader(curPage, false);
+            rowCount = 0;
+          }
+          const item = presItems[ri];
+          if (rowCount % 2 === 0) curPage.drawRectangle({ x: M, y: ty - 5, width: W - M * 2, height: 20, color: rgb(0.98, 0.973, 0.957) });
           const file = (tab.files || []).find(fn => {
             const inv = inventory.find(x => x.filename === fn);
             return inv && ((inv.docTypes || []).some(d => d.toLowerCase().includes(item.toLowerCase())) || item.toLowerCase().includes(((inv.docTypes || [''])[0] || '').toLowerCase()));
           }) || (tab.files || [])[0] || '';
-          page.drawText(item, { x: M + 8, y: ty, size: 9, font: helvetica, color: INK });
-          // Truncate filename if too long
+          curPage.drawText(item, { x: M + 8, y: ty, size: 9, font: helvetica, color: INK });
           let fn = file;
           while (fn && helvetica.widthOfTextAtSize(fn, 8) > W - M * 2 - 185) fn = fn.slice(0, -4) + '…';
-          if (fn) page.drawText(fn, { x: M + 180, y: ty, size: 8, font: helvetica, color: MUTED });
-          ty -= 20;
-        });
+          if (fn) curPage.drawText(fn, { x: M + 180, y: ty, size: 8, font: helvetica, color: MUTED });
+          ty -= ROW_H;
+          rowCount++;
+        }
 
-        // Footer
-        const cx = W / 2;
-        page.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
-        page.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
-        const footMid = 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName;
-        page.drawText(footMid, { x: cx - helvetica.widthOfTextAtSize(footMid, 7.5) / 2, y: 22, size: 7.5, font: helvetica, color: MUTED });
-        page.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+        drawContentFooter(curPage);
       }
 
       // ── MERGE ACTUAL UPLOADED PDFs FOR THIS TAB ─────────────────────────────
