@@ -38,7 +38,10 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
 .fi .fsz{font-size:9px;color:var(--muted);white-space:nowrap;}
 .fi .frm{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0;transition:color .15s;}
 .fi .frm:hover{color:var(--accent);}
-.fi.sf{border-color:rgba(37,99,168,.2);} .fi.df{border-color:rgba(184,134,11,.2);}
+.fi.sf{border-color:rgba(37,99,168,.2);} .fi.df{border-color:rgba(184,134,11,.2);} .fi.sdf{border-color:rgba(26,107,60,.2);}
+.dz.green:hover,.dz.green.dragover{border-color:var(--success);background:#f0fdf4;}
+.section-divider{margin:4px 0;padding:8px 14px;background:var(--ink);color:var(--paper);font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;border-radius:3px;}
+.manual-card+.manual-card{margin-top:0;}
 .smeter{margin-top:6px;}
 .srow{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;}
 .srow span:last-child{font-family:var(--mono);}
@@ -217,6 +220,20 @@ main{flex:1;display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 63p
       </div>
     </div>
     <div class="ss">
+      <div class="slbl">Shop Drawings</div>
+      <div class="dz green" id="sd-zone">
+        <input type="file" id="sd-input" multiple accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.csv,.png,.jpg,.jpeg">
+        <div class="di">&#x1F4D0;</div>
+        <div class="dl">Drop shop drawings here</div>
+        <div class="ds">Optional &mdash; processed independently from O&amp;M</div>
+      </div>
+      <div class="flist" id="sd-list"></div>
+      <div class="smeter">
+        <div class="srow"><span>SD files</span><span id="sd-size-txt">0 MB</span></div>
+        <div class="sbwrap"><div class="sbar" id="sd-size-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="ss">
       <div class="slbl">Assembly Process</div>
       <div class="phase-steps">
         <div class="phase-step disabled" id="step1" onclick="runPass1()">
@@ -269,11 +286,15 @@ FIRE TAB: Balloon test certificate, fire suppression reports.
 AS-BUILT TAB (last): Mechanical as-built drawings.`;
 
 let company={},logoDataUrl=null,sigDataUrl=null;
-let specFiles=[],docFiles=[];
+let specFiles=[],docFiles=[],sdFiles=[];
 let inventory=[];
+let sdInventory=[];
 let structure=null;
+let sdStructure=null;
 let finalReport=null;
+let sdFinalReport=null;
 let passState={p1:'idle',p2:'idle',p3:'idle'};
+let sdPassState={p1:'idle',p2:'idle',p3:'idle'};
 let specText=''; // extracted text from uploaded engineer spec files
 
 function loadSettings(){
@@ -321,7 +342,7 @@ async function safePdfBlock(parts,f){
   }
 }
 
-function totalBytes(){return specFiles.reduce((a,f)=>a+f.size,0)+docFiles.reduce((a,f)=>a+f.size,0);}
+function totalBytes(){return specFiles.reduce((a,f)=>a+f.size,0)+docFiles.reduce((a,f)=>a+f.size,0)+sdFiles.reduce((a,f)=>a+f.size,0);}
 
 function updateSizeMeter(){
   const mb=totalBytes()/1048576,pct=Math.min(100,(mb/200)*100);
@@ -343,7 +364,7 @@ function getNewFiles(){
 function checkReady(){
   const btn=document.getElementById('run-btn');
   const step1=document.getElementById('step1');
-  const canStart=docFiles.length>0;
+  const canStart=(docFiles.length>0||sdFiles.length>0);
   const newFiles = getNewFiles();
 
   if(btn){
@@ -409,15 +430,33 @@ function rmDoc(i){
 
 document.getElementById('spec-input').addEventListener('change',e=>{specFiles=[...specFiles,...Array.from(e.target.files)];renderSpecList();});
 document.getElementById('doc-input').addEventListener('change',e=>{docFiles=[...docFiles,...Array.from(e.target.files)];renderDocList();});
-['spec-zone','doc-zone'].forEach((id,idx)=>{
-  const z=document.getElementById(id),type=idx===0?'spec':'doc';
+document.getElementById('sd-input').addEventListener('change',e=>{sdFiles=[...sdFiles,...Array.from(e.target.files)];renderSdList();});
+
+function renderSdList(){
+  const c=document.getElementById('sd-list');c.innerHTML='';
+  sdFiles.forEach((f,i)=>{
+    const el=document.createElement('div');el.className='fi sdf';
+    el.innerHTML='<span style="font-size:9px;font-family:var(--mono);flex-shrink:0;">'+fIcon(f.name)+'</span><span class="fn" title="'+esc(f.name)+'">'+esc(f.name)+'</span><span class="fsz">'+fmtSz(f.size)+'</span><button class="frm" onclick="rmSd('+i+')">x</button>';
+    c.appendChild(el);
+  });
+  const mb=sdFiles.reduce((a,f)=>a+f.size,0)/1048576;
+  const sdTxt=document.getElementById('sd-size-txt');const sdBar=document.getElementById('sd-size-bar');
+  if(sdTxt)sdTxt.textContent=mb.toFixed(1)+' MB';
+  if(sdBar){sdBar.style.width=Math.min(100,(mb/50)*100)+'%';sdBar.style.background=mb>40?'var(--accent)':mb>25?'var(--warn)':'var(--success)';}
+  updateSizeMeter();
+}
+function rmSd(i){sdFiles.splice(i,1);renderSdList();}
+
+['spec-zone','doc-zone','sd-zone'].forEach((id,idx)=>{
+  const z=document.getElementById(id),type=idx===0?'spec':idx===1?'doc':'sd';
   z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('dragover');});
   z.addEventListener('dragleave',()=>z.classList.remove('dragover'));
   z.addEventListener('drop',e=>{
     e.preventDefault();z.classList.remove('dragover');
     const arr=Array.from(e.dataTransfer.files);
     if(type==='spec'){specFiles=[...specFiles,...arr];renderSpecList();}
-    else{docFiles=[...docFiles,...arr];renderDocList();}
+    else if(type==='doc'){docFiles=[...docFiles,...arr];renderDocList();}
+    else{sdFiles=[...sdFiles,...arr];renderSdList();}
   });
 });
 
@@ -514,7 +553,19 @@ async function startAssembly(){
     await readSpecFiles();
     await sleep(12000); // rate limit pause before Pass 1
   }
-  await runPass1();
+  // Run O&M stream if we have O&M files
+  if(docFiles.length>0){
+    await runPass1('om');
+  }
+  // Run SD stream if we have SD files
+  if(sdFiles.length>0){
+    // If we just ran O&M, wait for rate limit before starting SD
+    if(docFiles.length>0){
+      setContent(document.getElementById('content').innerHTML+'<div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;font-family:var(--mono);">O&M complete. Waiting 2 minutes before processing shop drawings...</div>');
+      await sleep(120000);
+    }
+    await runPass1('sd');
+  }
 }
 
 async function startIncremental(){
@@ -526,35 +577,43 @@ async function startIncremental(){
   passState.p2='idle'; passState.p3='idle';
   setStepState(2,'disabled','');
   setStepState(3,'disabled','');
-  await runPass1(newFiles);
+  await runPass1('om',newFiles);
 }
 
-async function runPass1(filesToProcess){
-  const files = filesToProcess || docFiles;
+async function runPass1(stream, filesToProcess){
+  // stream: 'om' (default) or 'sd'
+  stream = stream || 'om';
+  const isSd = stream === 'sd';
+  const allFiles = isSd ? sdFiles : docFiles;
+  const files = filesToProcess || allFiles;
   if(files.length===0)return;
   const isIncremental = !!filesToProcess;
-  if(!isIncremental) setStepState(1,'running','Reading...');
+  const activeInventory = isSd ? sdInventory : inventory;
+  const activePassState = isSd ? sdPassState : passState;
+  const streamLabel = isSd ? 'Shop Drawings' : 'O&M Manuals';
+
+  if(!isIncremental) setStepState(1,'running','Reading '+streamLabel+'...');
   else setStepState(1,'running','Adding '+files.length+'...');
-  if(!isIncremental) inventory=[];
+  if(!isIncremental){ if(isSd){sdInventory=[];}else{inventory=[];} }
   const projName=document.getElementById('proj-name').value||'this project';
   const projAddr=document.getElementById('proj-addr').value||'';
 
   const progressItems=files.map((f,i)=>
-    '<div class="pc-file" id="pf-'+i+'"><div class="pc-wait" id="pf-dot-'+i+'"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>'
+    '<div class="pc-file" id="pf-'+stream+'-'+i+'"><div class="pc-wait" id="pf-dot-'+stream+'-'+i+'"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>'
   ).join('');
 
   const titleText = isIncremental
-    ? 'Pass 1 - Reading ' + files.length + ' New File' + (files.length>1?'s':'') + ' ('+inventory.length+' already identified)'
-    : 'Pass 1 - Reading and Identifying ' + files.length + ' Documents';
-  setContent('<div class="progress-card"><div class="pc-title">'+titleText+'</div><div class="pc-sub">Reading the first 10 pages of each file to identify what it is, who made it, and what equipment it covers.</div>'+progressItems+'<div class="pwrap"><div class="pbar" id="p1-bar" style="width:0%"></div></div></div>');
+    ? 'Pass 1 — '+streamLabel+' — Reading ' + files.length + ' New File' + (files.length>1?'s':'') + ' ('+activeInventory.length+' already identified)'
+    : 'Pass 1 — '+streamLabel+' — Reading and Identifying ' + files.length + ' Documents';
+  setContent('<div class="progress-card"><div class="pc-title">'+titleText+'</div><div class="pc-sub">Reading the first 10 pages of each file to identify what it is, who made it, and what equipment it covers.</div>'+progressItems+'<div class="pwrap"><div class="pbar" id="p1-bar-'+stream+'" style="width:0%"></div></div></div>');
 
   for(let i=0;i<files.length;i++){
     const f=files[i];
-    const dot=document.getElementById('pf-dot-'+i);
+    const dot=document.getElementById('pf-dot-'+stream+'-'+i);
     if(dot)dot.className='pc-spinner';
 
     const parts=[];
-    parts.push({type:'text',text:'You are identifying a document for an HVAC Operations & Maintenance Manual.\nProject: '+projName+(projAddr?' - '+projAddr:'')+'\n\nRead the FIRST 10 PAGES of this document thoroughly and identify:\n1. Document TYPE (IOM manual / warranty / TAB report / fire test / balloon test / as-built drawing / data sheet / startup report / commissioning report / substantial completion letter / index / cover page / other)\n2. MANUFACTURER name (e.g. York, Captive Aire, Greenheck, Lennox, Carrier)\n3. EQUIPMENT type and description\n4. MODEL number(s) if visible\n5. Suggested TAB NAME (format: "Manufacturer - Equipment Type", e.g. "York - Rooftop Air Conditioner")\n6. Are there MULTIPLE documents in this file? List them.\n7. Is this AMBIGUOUS - do you need more pages to be certain?\n8. NOTES: warranty period, test date, serial numbers, anything relevant to the manual\n\nReturn ONLY valid JSON:\n{"filename":"'+f.name+'","docTypes":["IOM manual"],"manufacturer":"York","equipment":"Rooftop Air Conditioner - ZJ Series","model":"ZJ150N24R2B1EAE1A2","suggestedTab":"York - Rooftop Air Conditioner","multipleDocuments":false,"subDocuments":[],"ambiguous":false,"notes":"3 to 12.5 ton gas electric package unit. 2-year warranty."}'});
+    parts.push({type:'text',text:'You are identifying a document for an HVAC Operations & Maintenance Manual.\nProject: '+projName+(projAddr?' - '+projAddr:'')+'\n\nRead the FIRST 10 PAGES of this document thoroughly and identify:\n1. Document TYPE (IOM manual / warranty / TAB report / fire test / balloon test / as-built drawing / data sheet / startup report / commissioning report / substantial completion letter / index / cover page / shop drawing / other)\n2. MANUFACTURER name (e.g. York, Captive Aire, Greenheck, Lennox, Carrier)\n3. EQUIPMENT type and description\n4. MODEL number(s) if visible\n5. Suggested TAB NAME (format: "Manufacturer - Equipment Type", e.g. "York - Rooftop Air Conditioner")\n6. Are there MULTIPLE documents in this file? List them.\n7. Is this AMBIGUOUS - do you need more pages to be certain?\n8. NOTES: warranty period, test date, serial numbers, anything relevant to the manual\n\nReturn ONLY valid JSON:\n{"filename":"'+f.name+'","docTypes":["IOM manual"],"manufacturer":"York","equipment":"Rooftop Air Conditioner - ZJ Series","model":"ZJ150N24R2B1EAE1A2","suggestedTab":"York - Rooftop Air Conditioner","multipleDocuments":false,"subDocuments":[],"ambiguous":false,"notes":"3 to 12.5 ton gas electric package unit. 2-year warranty."}'});
 
     const ext=f.name.split('.').pop().toLowerCase();
     if(ext==='pdf'){await safePdfBlock(parts,f);}
@@ -564,41 +623,51 @@ async function runPass1(filesToProcess){
     try{
       const raw=await callAPI([{role:'user',content:parts}],1200);
       const result=parseJSON(raw);
-      inventory.push(Object.assign({},result,{fileIndex:docFiles.indexOf(f),fileSize:f.size}));
+      const fileIdx = allFiles.indexOf(f);
+      if(isSd){sdInventory.push(Object.assign({},result,{fileIndex:fileIdx,fileSize:f.size}));}
+      else{inventory.push(Object.assign({},result,{fileIndex:fileIdx,fileSize:f.size}));}
     }catch(err){
-      inventory.push({filename:f.name,docTypes:['unknown'],manufacturer:'',equipment:'',model:'',suggestedTab:'Unidentified',ambiguous:true,notes:'Could not process: '+err.message,fileIndex:docFiles.indexOf(f),fileSize:f.size});
+      const errItem={filename:f.name,docTypes:['unknown'],manufacturer:'',equipment:'',model:'',suggestedTab:'Unidentified',ambiguous:true,notes:'Could not process: '+err.message,fileIndex:allFiles.indexOf(f),fileSize:f.size};
+      if(isSd){sdInventory.push(errItem);}else{inventory.push(errItem);}
     }
 
     if(dot)dot.className='pc-done';
-    const bar=document.getElementById('p1-bar');
+    const bar=document.getElementById('p1-bar-'+stream);
     if(bar)bar.style.width=Math.round(((i+1)/files.length)*100)+'%';
-    // Pause between files to stay under rate limit (30k tokens/min)
     if(i < files.length-1) await sleep(12000);
   }
 
-  passState.p1='done';
-  setStepState(1,'done','Done '+inventory.length+' files');
+  const doneCount = isSd ? sdInventory.length : inventory.length;
+  activePassState.p1='done';
+  setStepState(1,'done','Done '+doneCount+' files');
   setStepState(2,'active','');
-  renderInventorySummary();
+  renderInventorySummary(stream);
   autoSaveProject();
-  // Wait 15 seconds for rate limit token bucket to refill before Pass 2
   setContent(document.getElementById('content').innerHTML + '<div style="margin-top:10px;font-size:11px;color:var(--muted);text-align:center;font-family:var(--mono);">Waiting 2 minutes before Pass 2 to allow rate limit to fully reset...</div>');
   await sleep(120000);
-  await runPass2();
+  await runPass2(stream);
 }
 
-function renderInventorySummary(){
-  const ambig=inventory.filter(x=>x.ambiguous).length;
-  let html='<div class="progress-card"><div class="pc-title">Pass 1 Complete - '+inventory.length+' Files Identified'+(ambig>0?' - '+ambig+' Ambiguous':'')+' </div><div class="pc-sub">Proceeding to Pass 2 - building manual structure...</div>';
-  inventory.forEach(item=>{
+function renderInventorySummary(stream){
+  const activeInventory = (stream==='sd') ? sdInventory : inventory;
+  const ambig=activeInventory.filter(x=>x.ambiguous).length;
+  const streamLabel = (stream==='sd') ? 'Shop Drawings' : 'O&amp;M Manuals';
+  let html='<div class="progress-card"><div class="pc-title">Pass 1 Complete — '+streamLabel+' — '+activeInventory.length+' Files Identified'+(ambig>0?' - '+ambig+' Ambiguous':'')+' </div><div class="pc-sub">Proceeding to Pass 2 - building manual structure...</div>';
+  activeInventory.forEach(item=>{
     html+='<div class="pc-file"><div class="'+(item.ambiguous?'pc-spinner':'pc-done')+'"></div><div style="flex:1"><div style="font-size:11px;font-weight:600;">'+esc(item.filename)+'</div><div style="font-size:10px;color:var(--muted);">'+esc(item.equipment||item.docTypes&&item.docTypes[0]||'Unknown')+(item.manufacturer?' - '+esc(item.manufacturer):'')+' | Tab: '+esc(item.suggestedTab||'')+'</div></div></div>';
   });
   html+='</div>';
   setContent(html);
 }
 
-async function runPass2(){
-  setStepState(2,'running','Building...');
+async function runPass2(stream){
+  stream = stream || 'om';
+  const isSd = stream === 'sd';
+  const activeInventory = isSd ? sdInventory : inventory;
+  const activePassState = isSd ? sdPassState : passState;
+  const streamLabel = isSd ? 'Shop Drawings' : 'O&M Manuals';
+
+  setStepState(2,'running','Building '+streamLabel+'...');
   const projName=document.getElementById('proj-name').value||'Project';
   const projAddr=document.getElementById('proj-addr').value||'';
   const projNum=document.getElementById('proj-number').value||'';
@@ -606,163 +675,203 @@ async function runPass2(){
   const dateStr=new Date(projDate+'T12:00:00').toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
   const specContext=getSpecRequirements();
 
-  // Format a single inventory item as compact text
   function fmtItem(item,i){
     return 'File '+(i+1)+': '+item.filename+' ('+fmtSz(item.fileSize)+')\n  Type: '+(item.docTypes||[]).join(', ')+'\n  Manufacturer: '+(item.manufacturer||'Unknown')+'\n  Equipment: '+(item.equipment||'Unknown')+'\n  Model: '+(item.model||'Not specified')+'\n  Suggested tab: '+(item.suggestedTab||'Unassigned')+'\n  Multiple docs: '+(item.multipleDocuments?'YES':'No')+'\n  Ambiguous: '+(item.ambiguous?'YES':'No')+'\n  Notes: '+(item.notes||'None');
   }
 
-  const BATCH = 15; // files per batch — keeps each Pass 2 API call well under token limit
-  const totalBatches = Math.ceil(inventory.length / BATCH);
-  let partialTabs = []; // collected tabs from all batches
+  const BATCH = 15;
+  const totalBatches = Math.ceil(activeInventory.length / BATCH);
+  let partialTabs = [];
 
   try{
     if(totalBatches === 1){
-      // Small job — one call, full structure
-      const invText = inventory.map((item,i)=>fmtItem(item,i)).join('\n\n');
-      const prompt = buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,false);
+      const invText = activeInventory.map((item,i)=>fmtItem(item,i)).join('\n\n');
+      const prompt = buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,false,isSd);
       const raw = await callAPI([{role:'user',content:[{type:'text',text:prompt}]}],4000);
-      structure = parseJSON(raw);
+      const result = parseJSON(raw);
+      if(isSd){sdStructure=result;}else{structure=result;}
 
     } else {
-      // Large job — batch the inventory, collect tabs from each batch, then consolidate
-      setContent('<div class="progress-card"><div class="pc-title">Pass 2 - Building Structure in '+totalBatches+' batches</div><div class="pc-sub">Large job: processing '+inventory.length+' files in groups of '+BATCH+' to stay within API limits.</div><div class="pwrap"><div class="pbar" id="p2-bar" style="width:0%"></div></div></div>');
+      setContent('<div class="progress-card"><div class="pc-title">Pass 2 — '+streamLabel+' — Building Structure in '+totalBatches+' batches</div><div class="pc-sub">Large job: processing '+activeInventory.length+' files in groups of '+BATCH+' to stay within API limits.</div><div class="pwrap"><div class="pbar" id="p2-bar-'+stream+'" style="width:0%"></div></div></div>');
 
       for(let b=0;b<totalBatches;b++){
-        const batchItems = inventory.slice(b*BATCH, (b+1)*BATCH);
+        const batchItems = activeInventory.slice(b*BATCH, (b+1)*BATCH);
         const invText = batchItems.map((item,i)=>fmtItem(item,b*BATCH+i)).join('\n\n');
-        const prompt = buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,true);
+        const prompt = buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,true,isSd);
 
         const raw = await callAPI([{role:'user',content:[{type:'text',text:prompt}]}],3000);
         const result = parseJSON(raw);
         if(result.tabs) partialTabs = partialTabs.concat(result.tabs);
 
-        const bar=document.getElementById('p2-bar');
+        const bar=document.getElementById('p2-bar-'+stream);
         if(bar)bar.style.width=Math.round(((b+1)/totalBatches)*100)+'%';
-
-        // Wait between batches
         if(b < totalBatches-1) await sleep(20000);
       }
 
-      // Consolidation call — merge all partial tabs into final structure
       await sleep(20000);
       const consolidatePrompt = 'You are finalizing an O&M Manual structure.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nThese tabs were identified across multiple batches. Merge them into a clean final structure:\n- Combine any tabs that should be together (same manufacturer/equipment)\n- Number tabs sequentially\n- Ensure as-built drawings go last\n- Ensure TAB report and fire suppression each have their own tab\n- Build the complete index\n- Flag any global missing items required by spec\n\nSPEC REQUIREMENTS:\n'+getSpecRequirements()+'\n\nBATCH RESULTS:\n'+JSON.stringify(partialTabs,null,2)+'\n\nReturn ONLY valid JSON in this exact format:\n{"manualTitle":"Operations & Maintenance Manual","projectName":"'+projName+'","projectAddress":"'+projAddr+'","projectNumber":"'+projNum+'","date":"'+dateStr+'","tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["file.pdf"],"documentSummary":"Brief summary.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"fixedSections":{"coverPage":{"line1":"'+projAddr+'","line2":"'+projName+'","line3":"Operation & Maintenance Manual"},"indexItems":["Substantial Completion Letter"],"substantialCompletionLetter":{"equipmentSummary":"Summary of what was installed."}},"missingItems":["Global missing items"],"ambiguousFiles":[],"notes":"Any observations"}';
 
       const raw2 = await callAPI([{role:'user',content:[{type:'text',text:consolidatePrompt}]}],4000);
-      structure = parseJSON(raw2);
+      const result2 = parseJSON(raw2);
+      if(isSd){sdStructure=result2;}else{structure=result2;}
     }
 
-    passState.p2='done';
-    setStepState(2,'done','Done '+(structure.tabs&&structure.tabs.length||0)+' tabs');
+    const activeStructure = isSd ? sdStructure : structure;
+    activePassState.p2='done';
+    setStepState(2,'done','Done '+(activeStructure.tabs&&activeStructure.tabs.length||0)+' tabs');
     setStepState(3,'active','');
     autoSaveProject();
-    const needsPass3=(structure.ambiguousFiles&&structure.ambiguousFiles.length>0)||inventory.some(x=>x.ambiguous);
-    if(needsPass3){await sleep(30000);await runPass3();}
-    else{passState.p3='done';setStepState(3,'done','Complete');finalReport=structure;renderFinalManual();autoSaveProject();}
+    const needsPass3=(activeStructure.ambiguousFiles&&activeStructure.ambiguousFiles.length>0)||activeInventory.some(x=>x.ambiguous);
+    if(needsPass3){await sleep(30000);await runPass3(stream);}
+    else{
+      activePassState.p3='done';
+      setStepState(3,'done','Complete');
+      if(isSd){sdFinalReport=sdStructure;}else{finalReport=structure;}
+      renderFinalManual();
+      autoSaveProject();
+    }
   }catch(err){
     setStepState(2,'disabled','');
-    setContent('<div class="progress-card"><div class="pc-title" style="color:var(--accent)">Pass 2 Error</div><div style="font-size:12px;color:var(--muted);margin-top:6px;">'+esc(err.message)+'</div></div>');
+    setContent('<div class="progress-card"><div class="pc-title" style="color:var(--accent)">Pass 2 Error — '+streamLabel+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px;">'+esc(err.message)+'</div></div>');
   }
 }
 
-function buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,batchMode){
+function buildPass2Prompt(projName,projAddr,projNum,dateStr,specContext,invText,batchMode,isSd){
   const batchNote=batchMode?'NOTE: This is one batch of a larger job. Focus on identifying and grouping the files in this batch only. Return tabs for these files. Do not worry about global missing items - that will be handled in a consolidation step.\n\n':'';
-  return batchNote+'You are assembling a professional Operations & Maintenance Manual for mechanical HVAC project.\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nSPEC:\n'+specContext+'\n\nDOCUMENT INVENTORY:\n'+invText+'\n\nBuild the manual tab structure for these files.\n\nRULES:\n1. One TAB per major piece of equipment or report type\n2. Multiple files from same manufacturer/equipment go in SAME tab\n3. TAB/air balance report gets its own tab\n4. Fire suppression/balloon test gets its own tab\n5. As-built drawings go LAST\n6. Tab names: "Manufacturer - Equipment Type"\n7. Flag missing items per tab\n\nReturn ONLY valid JSON:\n{"tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["ZJ_OPERATION_MANUAL.pdf"],"documentSummary":"ZJ-series IOM manual.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"missingItems":[],"ambiguousFiles":[],"notes":""}';
+  const docType=isSd?'Shop Drawings package':'Operations & Maintenance Manual';
+  const role=isSd?'You are assembling a professional Shop Drawings package for a mechanical HVAC project.':'You are assembling a professional Operations & Maintenance Manual for mechanical HVAC project.';
+  return batchNote+role+'\n\nPROJECT: '+projName+(projNum?' | Job #'+projNum:'')+(projAddr?' | '+projAddr:'')+'\nDATE: '+dateStr+'\nCONTRACTOR: '+(company.name||'Mechanical Contractor')+'\n\nSPEC:\n'+specContext+'\n\nDOCUMENT INVENTORY:\n'+invText+'\n\nBuild the '+docType+' tab structure for these files.\n\nRULES:\n1. One TAB per major piece of equipment or report type\n2. Multiple files from same manufacturer/equipment go in SAME tab\n3. TAB/air balance report gets its own tab\n4. Fire suppression/balloon test gets its own tab\n5. As-built drawings go LAST\n6. Tab names: "Manufacturer - Equipment Type"\n7. Flag missing items per tab\n\nReturn ONLY valid JSON:\n{"tabs":[{"tabNumber":1,"tabName":"York - Rooftop Air Conditioner","manufacturer":"York","equipment":"Rooftop Air Conditioner","sectionCoverLines":["'+projAddr+'","'+projName+'","York","Rooftop Air Conditioner"],"files":["ZJ_OPERATION_MANUAL.pdf"],"documentSummary":"ZJ-series IOM manual.","presentItems":["IOM manual"],"missingItems":["Startup report"]}],"missingItems":[],"ambiguousFiles":[],"notes":""}';
 }
 
-async function runPass3(){
+async function runPass3(stream){
+  stream = stream || 'om';
+  const isSd = stream === 'sd';
+  const activeInventory = isSd ? sdInventory : inventory;
+  const activeStructure = isSd ? sdStructure : structure;
+  const activePassState = isSd ? sdPassState : passState;
+  const activeFiles = isSd ? sdFiles : docFiles;
+
   setStepState(3,'running','Verifying...');
-  const ambigFilenames=structure&&structure.ambiguousFiles||[];
-  const ambigFiles=docFiles.filter(f=>ambigFilenames.includes(f.name)||inventory.find(x=>x.filename===f.name&&x.ambiguous));
+  const ambigFilenames=activeStructure&&activeStructure.ambiguousFiles||[];
+  const ambigFiles=activeFiles.filter(f=>ambigFilenames.includes(f.name)||activeInventory.find(x=>x.filename===f.name&&x.ambiguous));
 
   for(const f of ambigFiles){
     const ext=f.name.split('.').pop().toLowerCase();
     const parts=[];
-    parts.push({type:'text',text:'Re-examining this file for an O&M manual for: '+(document.getElementById('proj-name').value||'this project')+'.\n\nCurrent tabs: '+(structure&&structure.tabs&&structure.tabs.map(t=>t.tabName).join(', ')||'unknown')+'.\n\nIdentify definitively: What is it? Which tab? What documents does it contain?\n\nReturn JSON: {"filename":"'+f.name+'","finalDocType":"...","finalTab":"...","notes":"..."}'});
+    parts.push({type:'text',text:'Re-examining this file for an O&M manual for: '+(document.getElementById('proj-name').value||'this project')+'.\n\nCurrent tabs: '+(activeStructure&&activeStructure.tabs&&activeStructure.tabs.map(t=>t.tabName).join(', ')||'unknown')+'.\n\nIdentify definitively: What is it? Which tab? What documents does it contain?\n\nReturn JSON: {"filename":"'+f.name+'","finalDocType":"...","finalTab":"...","notes":"..."}'});
     if(ext==='pdf')await safePdfBlock(parts,f);
     else if(['png','jpg','jpeg'].includes(ext)){const b64=await toB64(f);parts.push({type:'image',source:{type:'base64',media_type:ext==='jpg'?'image/jpeg':'image/'+ext,data:b64}});}
     try{
       const raw=await callAPI([{role:'user',content:parts}],800);
       const result=parseJSON(raw);
-      const invItem=inventory.find(x=>x.filename===f.name);
+      const invItem=activeInventory.find(x=>x.filename===f.name);
       if(invItem&&result.finalTab){invItem.suggestedTab=result.finalTab;invItem.ambiguous=false;invItem.notes=result.notes||invItem.notes;}
-      if(structure&&result.finalTab){const tab=structure.tabs&&structure.tabs.find(t=>t.tabName===result.finalTab);if(tab&&!tab.files.includes(f.name))tab.files.push(f.name);}
+      if(activeStructure&&result.finalTab){const tab=activeStructure.tabs&&activeStructure.tabs.find(t=>t.tabName===result.finalTab);if(tab&&!tab.files.includes(f.name))tab.files.push(f.name);}
     }catch{}
   }
 
-  const checkPrompt='Final completeness check.\nTabs built: '+JSON.stringify(structure&&structure.tabs&&structure.tabs.map(t=>({tab:t.tabName,files:t.files,missing:t.missingItems})))+'\n\nSpec: '+getSpecRequirements()+'\n\nList remaining gaps.\nReturn JSON: {"allComplete":false,"remainingGaps":["Specific missing item"],"recommendations":["Actionable step"]}';
+  const checkPrompt='Final completeness check.\nTabs built: '+JSON.stringify(activeStructure&&activeStructure.tabs&&activeStructure.tabs.map(t=>({tab:t.tabName,files:t.files,missing:t.missingItems})))+'\n\nSpec: '+getSpecRequirements()+'\n\nList remaining gaps.\nReturn JSON: {"allComplete":false,"remainingGaps":["Specific missing item"],"recommendations":["Actionable step"]}';
   try{
     const raw=await callAPI([{role:'user',content:[{type:'text',text:checkPrompt}]}],1000);
     const check=parseJSON(raw);
-    if(structure){structure.finalGaps=check.remainingGaps||[];structure.recommendations=check.recommendations||[];}
+    if(activeStructure){activeStructure.finalGaps=check.remainingGaps||[];activeStructure.recommendations=check.recommendations||[];}
   }catch{}
 
-  passState.p3='done';
+  activePassState.p3='done';
   setStepState(3,'done','Complete');
-  finalReport=structure;
+  if(isSd){sdFinalReport=sdStructure;}else{finalReport=structure;}
   renderFinalManual();
   autoSaveProject();
 }
 
 function renderFinalManual(){
-  if(!finalReport)return;
-  const tabs=finalReport.tabs||[];
-  const allPresent=tabs.reduce((a,t)=>a+(t.presentItems&&t.presentItems.length||0),0);
-  const allMissing=tabs.reduce((a,t)=>a+(t.missingItems&&t.missingItems.length||0),0)+(finalReport.missingItems&&finalReport.missingItems.length||0)+(finalReport.finalGaps&&finalReport.finalGaps.length||0);
+  const hasOm = !!finalReport;
+  const hasSd = !!sdFinalReport;
+  if(!hasOm && !hasSd) return;
+
+  const omTabs = hasOm ? (finalReport.tabs||[]) : [];
+  const sdTabs = hasSd ? (sdFinalReport.tabs||[]) : [];
+
+  const omPresent=omTabs.reduce((a,t)=>a+(t.presentItems&&t.presentItems.length||0),0);
+  const omMissing=omTabs.reduce((a,t)=>a+(t.missingItems&&t.missingItems.length||0),0)+(hasOm&&finalReport.missingItems?finalReport.missingItems.length:0)+(hasOm&&finalReport.finalGaps?finalReport.finalGaps.length:0);
+  const sdPresent=sdTabs.reduce((a,t)=>a+(t.presentItems&&t.presentItems.length||0),0);
+  const sdMissing=sdTabs.reduce((a,t)=>a+(t.missingItems&&t.missingItems.length||0),0)+(hasSd&&sdFinalReport.missingItems?sdFinalReport.missingItems.length:0)+(hasSd&&sdFinalReport.finalGaps?sdFinalReport.finalGaps.length:0);
+
+  const totalFiles = docFiles.length + sdFiles.length;
+  const totalTabs = omTabs.length + sdTabs.length;
+  const allMissing = omMissing + sdMissing;
+  const allPresent = omPresent + sdPresent;
 
   let html='<div class="abar"><button class="abtn ab-pdf" onclick="exportPDF()">Export Full Manual PDF</button><button class="abtn ab-email" onclick="openOutlook()">Email Engineer</button><button class="abtn ab-ghost" onclick="clearAll()">Clear Session</button></div>';
-  html+='<div class="sumrow"><div class="sc"><div class="sv">'+tabs.length+'</div><div class="sl">Manual Sections</div></div><div class="sc sc-ok"><div class="sv">'+docFiles.length+'</div><div class="sl">Files Processed</div></div><div class="sc sc-warn"><div class="sv">'+allPresent+'</div><div class="sl">Items Present</div></div><div class="sc sc-miss"><div class="sv">'+allMissing+'</div><div class="sl">Items Missing</div></div></div>';
-  html+='<div class="manual-card"><div class="mc-hdr"><h3>'+esc(finalReport.projectName||'O&M Manual')+' - Manual Structure</h3><span class="mcsub">'+(finalReport.date||'')+'</span></div>';
+  html+='<div class="sumrow"><div class="sc"><div class="sv">'+totalTabs+'</div><div class="sl">Total Sections</div></div><div class="sc sc-ok"><div class="sv">'+totalFiles+'</div><div class="sl">Files Processed</div></div><div class="sc sc-warn"><div class="sv">'+allPresent+'</div><div class="sl">Items Present</div></div><div class="sc sc-miss"><div class="sv">'+allMissing+'</div><div class="sl">Items Missing</div></div></div>';
 
-  html+='<div class="tab-block"><div class="tb-header" onclick="toggleTab(\'fixed\')"><div class="tb-num" style="background:var(--accent);">*</div><span class="tb-name">Fixed Sections - Cover · Index · Substantial Completion Letter</span><div class="tb-badges"><span class="tbb tbb-info">Always required</span></div></div><div class="tb-body open" id="tbb-fixed"><div class="file-line fl-ok"><span class="fl-ic">C</span><div><span class="fl-tag ft-ok">COVER PAGE</span><div class="fl-detail">Project name, address, date, contractor info - generated automatically</div></div></div><div class="file-line fl-ok"><span class="fl-ic">I</span><div><span class="fl-tag ft-ok">INDEX PAGE</span><div class="fl-detail">Complete list of all '+tabs.length+' sections - generated automatically</div></div></div><div class="file-line fl-ok"><span class="fl-ic">L</span><div><span class="fl-tag ft-ok">SUBSTANTIAL COMPLETION LETTER</span><div class="fl-detail">'+(finalReport.fixedSections&&finalReport.fixedSections.substantialCompletionLetter&&finalReport.fixedSections.substantialCompletionLetter.equipmentSummary||'Signed letter from '+esc(company.name||'contractor'))+' - generated automatically</div></div></div></div></div>';
+  // Helper to render a stream's tabs into a manual-card
+  function renderStreamCard(report, streamTabs, label, streamKey, activeInventory, activeFiles){
+    let h='<div class="manual-card"><div class="mc-hdr"><h3>'+esc(label)+'</h3><span class="mcsub">'+(report.date||'')+'</span></div>';
 
-  tabs.forEach((tab,i)=>{
-    const hasMissing=(tab.missingItems&&tab.missingItems.length||0)>0;
-    html+='<div class="tab-block"><div class="tb-header" onclick="toggleTab('+i+')"><div class="tb-num">'+(tab.tabNumber||i+1)+'</div><input class="tb-rename" value="'+esc(tab.tabName)+'" onchange="renameTab('+i+',this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onfocus="event.stopPropagation()"/><div class="tb-actions"><button class="tb-act'+(i===0?' disabled':'')+'" onclick="event.stopPropagation();moveTabUp('+i+')" title="Move up">&#9650;</button><button class="tb-act'+(i===tabs.length-1?' disabled':'')+'" onclick="event.stopPropagation();moveTabDown('+i+')" title="Move down">&#9660;</button></div><div class="tb-badges">'+((tab.presentItems&&tab.presentItems.length||0)>0?'<span class="tbb tbb-ok">'+( tab.presentItems&&tab.presentItems.length)+' present</span>':'')+(hasMissing?'<span class="tbb tbb-miss">'+(tab.missingItems&&tab.missingItems.length)+' missing</span>':'')+'</div></div><div class="tb-body" id="tbb-'+i+'"><div class="file-line fl-info"><span class="fl-ic">S</span><div><span class="fl-tag ft-info">SECTION COVER PAGE</span><div class="fl-detail">Generated: '+esc((tab.sectionCoverLines||[]).join(' | '))+'</div></div></div>';
-    (tab.files||[]).forEach(fname=>{
-      const inv=inventory.find(x=>x.filename===fname);
-      html+='<div class="file-line fl-ok"><span class="fl-ic">D</span><div><span class="fl-tag ft-ok">FILE</span><div class="fl-detail"><strong>'+esc(fname)+'</strong>'+(inv?' - '+esc(inv.equipment||inv.docTypes&&inv.docTypes[0]||'')+(inv.notes?' | '+esc(inv.notes):''):'')+' </div></div></div>';
+    h+='<div class="tab-block"><div class="tb-header" onclick="toggleTab(\'fixed-'+streamKey+'\')"><div class="tb-num" style="background:var(--accent);">*</div><span class="tb-name">Fixed Sections - Cover · Index · Substantial Completion Letter</span><div class="tb-badges"><span class="tbb tbb-info">Always required</span></div></div><div class="tb-body open" id="tbb-fixed-'+streamKey+'"><div class="file-line fl-ok"><span class="fl-ic">C</span><div><span class="fl-tag ft-ok">COVER PAGE</span><div class="fl-detail">Generated automatically</div></div></div><div class="file-line fl-ok"><span class="fl-ic">I</span><div><span class="fl-tag ft-ok">INDEX PAGE</span><div class="fl-detail">Complete list of all '+streamTabs.length+' sections - generated automatically</div></div></div>'+(streamKey==='om'?'<div class="file-line fl-ok"><span class="fl-ic">L</span><div><span class="fl-tag ft-ok">SUBSTANTIAL COMPLETION LETTER</span><div class="fl-detail">'+(report.fixedSections&&report.fixedSections.substantialCompletionLetter&&report.fixedSections.substantialCompletionLetter.equipmentSummary||'Signed letter from '+esc(company.name||'contractor'))+' - generated automatically</div></div></div>':'')+'</div></div>';
+
+    streamTabs.forEach((tab,i)=>{
+      const hasMissing=(tab.missingItems&&tab.missingItems.length||0)>0;
+      const tabKey=streamKey+'-'+i;
+      h+='<div class="tab-block"><div class="tb-header" onclick="toggleTab(\''+tabKey+'\')"><div class="tb-num">'+(tab.tabNumber||i+1)+'</div><input class="tb-rename" value="'+esc(tab.tabName)+'" onchange="renameTab(\''+streamKey+'\','+i+',this.value)" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onfocus="event.stopPropagation()"/><div class="tb-actions"><button class="tb-act'+(i===0?' disabled':'')+'" onclick="event.stopPropagation();moveTabUp(\''+streamKey+'\','+i+')" title="Move up">&#9650;</button><button class="tb-act'+(i===streamTabs.length-1?' disabled':'')+'" onclick="event.stopPropagation();moveTabDown(\''+streamKey+'\','+i+')" title="Move down">&#9660;</button></div><div class="tb-badges">'+((tab.presentItems&&tab.presentItems.length||0)>0?'<span class="tbb tbb-ok">'+(tab.presentItems&&tab.presentItems.length)+' present</span>':'')+(hasMissing?'<span class="tbb tbb-miss">'+(tab.missingItems&&tab.missingItems.length)+' missing</span>':'')+'</div></div><div class="tb-body" id="tbb-'+tabKey+'"><div class="file-line fl-info"><span class="fl-ic">S</span><div><span class="fl-tag ft-info">SECTION COVER PAGE</span><div class="fl-detail">Generated: '+esc((tab.sectionCoverLines||[]).join(' | '))+'</div></div></div>';
+      (tab.files||[]).forEach(fname=>{
+        const inv=activeInventory.find(x=>x.filename===fname);
+        h+='<div class="file-line fl-ok"><span class="fl-ic">D</span><div><span class="fl-tag ft-ok">FILE</span><div class="fl-detail"><strong>'+esc(fname)+'</strong>'+(inv?' - '+esc(inv.equipment||inv.docTypes&&inv.docTypes[0]||'')+(inv.notes?' | '+esc(inv.notes):''):'')+' </div></div></div>';
+      });
+      (tab.missingItems||[]).forEach(m=>{h+='<div class="file-line fl-miss"><span class="fl-ic">!</span><div><span class="fl-tag ft-miss">MISSING</span><div class="fl-detail">'+esc(m)+'</div></div></div>';});
+      if(tab.documentSummary)h+='<div style="font-size:10.5px;color:var(--muted);margin-top:8px;padding:6px 8px;background:rgba(0,0,0,.03);border-radius:3px;">'+esc(tab.documentSummary)+'</div>';
+      h+='</div></div>';
     });
-    (tab.missingItems||[]).forEach(m=>{html+='<div class="file-line fl-miss"><span class="fl-ic">!</span><div><span class="fl-tag ft-miss">MISSING</span><div class="fl-detail">'+esc(m)+'</div></div></div>';});
-    if(tab.documentSummary)html+='<div style="font-size:10.5px;color:var(--muted);margin-top:8px;padding:6px 8px;background:rgba(0,0,0,.03);border-radius:3px;">'+esc(tab.documentSummary)+'</div>';
-    html+='</div></div>';
-  });
 
-  const globalMissing=[...(finalReport.missingItems||[]),...(finalReport.finalGaps||[])];
-  if(globalMissing.length>0){
-    html+='<div class="tab-block"><div class="tb-header" onclick="toggleTab(\'missing\')"><div class="tb-num" style="background:var(--accent);">!</div><span class="tb-name">Required Items Not Found</span><div class="tb-badges"><span class="tbb tbb-miss">'+globalMissing.length+' missing</span></div></div><div class="tb-body open" id="tbb-missing">'+globalMissing.map(m=>'<div class="file-line fl-miss"><span class="fl-ic">!</span><div><span class="fl-tag ft-miss">MISSING</span><div class="fl-detail">'+esc(m)+'</div></div></div>').join('')+'</div></div>';
+    const globalMissing=[...(report.missingItems||[]),...(report.finalGaps||[])];
+    if(globalMissing.length>0){
+      h+='<div class="tab-block"><div class="tb-header" onclick="toggleTab(\'missing-'+streamKey+'\')"><div class="tb-num" style="background:var(--accent);">!</div><span class="tb-name">Required Items Not Found</span><div class="tb-badges"><span class="tbb tbb-miss">'+globalMissing.length+' missing</span></div></div><div class="tb-body open" id="tbb-missing-'+streamKey+'">'+globalMissing.map(m=>'<div class="file-line fl-miss"><span class="fl-ic">!</span><div><span class="fl-tag ft-miss">MISSING</span><div class="fl-detail">'+esc(m)+'</div></div></div>').join('')+'</div></div>';
+    }
+    h+='</div>';
+    return h;
   }
-  html+='</div><div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Assembly complete - '+docFiles.length+' files processed - No files saved to server</div>';
+
+  if(hasOm){
+    html+=renderStreamCard(finalReport, omTabs, (finalReport.projectName||'O&M Manual')+' — Operation &amp; Maintenance Manuals', 'om', inventory, docFiles);
+  }
+  if(hasSd){
+    html+=renderStreamCard(sdFinalReport, sdTabs, (sdFinalReport.projectName||'Shop Drawings')+' — Shop Drawings', 'sd', sdInventory, sdFiles);
+  }
+
+  html+='<div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0;font-family:var(--mono);">Assembly complete - '+totalFiles+' files processed - No files saved to server</div>';
   setContent(html);
 }
 
 function toggleTab(id){const b=document.getElementById('tbb-'+id);if(b)b.classList.toggle('open');}
 
-function moveTabUp(i){
-  if(!finalReport||!finalReport.tabs||i<=0)return;
-  const tabs=finalReport.tabs;
+function moveTabUp(stream,i){
+  const report = (stream==='sd') ? sdFinalReport : finalReport;
+  if(!report||!report.tabs||i<=0)return;
+  const tabs=report.tabs;
   [tabs[i-1],tabs[i]]=[tabs[i],tabs[i-1]];
-  // Renumber
   tabs.forEach((t,idx)=>{t.tabNumber=idx+1;});
   renderFinalManual();
   autoSaveProject();
 }
 
-function moveTabDown(i){
-  if(!finalReport||!finalReport.tabs||i>=finalReport.tabs.length-1)return;
-  const tabs=finalReport.tabs;
+function moveTabDown(stream,i){
+  const report = (stream==='sd') ? sdFinalReport : finalReport;
+  if(!report||!report.tabs||i>=report.tabs.length-1)return;
+  const tabs=report.tabs;
   [tabs[i],tabs[i+1]]=[tabs[i+1],tabs[i]];
   tabs.forEach((t,idx)=>{t.tabNumber=idx+1;});
   renderFinalManual();
   autoSaveProject();
 }
 
-function renameTab(i,newName){
-  if(!finalReport||!finalReport.tabs||!finalReport.tabs[i])return;
+function renameTab(stream,i,newName){
+  const report = (stream==='sd') ? sdFinalReport : finalReport;
+  if(!report||!report.tabs||!report.tabs[i])return;
   newName=newName.trim();
   if(!newName)return;
-  const tab=finalReport.tabs[i];
+  const tab=report.tabs[i];
   tab.tabName=newName;
-  // Update section cover lines — replace manufacturer/equipment with new name parts
   const parts=newName.split(/\s*[-–—]\s*/);
   if(parts.length>=2){
     tab.manufacturer=parts[0].trim();
@@ -772,7 +881,6 @@ function renameTab(i,newName){
     tab.sectionCoverLines[2]=tab.manufacturer||'';
     tab.sectionCoverLines[3]=tab.equipment||'';
   }
-  // Don't re-render — the input is inline and the user is still editing
   autoSaveProject();
 }
 
@@ -780,9 +888,9 @@ function renameTab(i,newName){
 function autoSaveProject(){
   try{
     const projName=document.getElementById('proj-name').value||'';
-    if(!projName&&!inventory.length)return; // nothing to save
+    if(!projName&&!inventory.length&&!sdInventory.length)return;
     const save={
-      version:1,
+      version:2,
       savedAt:new Date().toISOString(),
       projectFields:{
         name:document.getElementById('proj-name').value||'',
@@ -795,9 +903,14 @@ function autoSaveProject(){
       inventory:inventory,
       structure:structure,
       finalReport:finalReport,
+      sdInventory:sdInventory,
+      sdStructure:sdStructure,
+      sdFinalReport:sdFinalReport,
       specText:specText,
       passState:passState,
-      fileManifest:docFiles.map(f=>({name:f.name,size:f.size}))
+      sdPassState:sdPassState,
+      fileManifest:docFiles.map(f=>({name:f.name,size:f.size})),
+      sdFileManifest:sdFiles.map(f=>({name:f.name,size:f.size}))
     };
     localStorage.setItem('om_project_save',JSON.stringify(save));
   }catch(e){console.error('Auto-save failed:',e);}
@@ -819,25 +932,39 @@ function loadSavedProject(){
     if(pf.engEmail)document.getElementById('proj-eng-email').value=pf.engEmail;
     if(pf.date)document.getElementById('proj-date').value=pf.date;
 
-    // Restore state
+    // Restore O&M state
     inventory=save.inventory||[];
     structure=save.structure||null;
     finalReport=save.finalReport||null;
-    specText=save.specText||'';
     passState=save.passState||{p1:'idle',p2:'idle',p3:'idle'};
 
-    // Restore step UI
-    if(passState.p1==='done')setStepState(1,'done','Done '+inventory.length+' files');
-    if(passState.p2==='done')setStepState(2,'done','Done '+(structure&&structure.tabs?structure.tabs.length:0)+' tabs');
-    if(passState.p3==='done')setStepState(3,'done','Complete');
+    // Restore SD state
+    sdInventory=save.sdInventory||[];
+    sdStructure=save.sdStructure||null;
+    sdFinalReport=save.sdFinalReport||null;
+    sdPassState=save.sdPassState||{p1:'idle',p2:'idle',p3:'idle'};
+
+    specText=save.specText||'';
+
+    // Restore step UI (based on whichever stream is further along)
+    if(passState.p1==='done'||sdPassState.p1==='done')setStepState(1,'done','Done '+(inventory.length+sdInventory.length)+' files');
+    if(passState.p2==='done'||sdPassState.p2==='done')setStepState(2,'done','Done '+((structure&&structure.tabs?structure.tabs.length:0)+(sdStructure&&sdStructure.tabs?sdStructure.tabs.length:0))+' tabs');
+    if(passState.p3==='done'||sdPassState.p3==='done')setStepState(3,'done','Complete');
 
     // Show resume prompt
     const manifest=save.fileManifest||[];
+    const sdManifest=save.sdFileManifest||[];
+    const allManifest=[...manifest,...sdManifest];
     const savedTime=save.savedAt?new Date(save.savedAt).toLocaleString():'unknown time';
     const projLabel=pf.name||'Untitled Project';
-    setContent('<div class="progress-card"><div class="pc-title">Saved Project Found — '+esc(projLabel)+'</div><div class="pc-sub">Last saved: '+esc(savedTime)+' · '+inventory.length+' files identified'+(finalReport?' · Ready to export':'')+'</div><div style="margin:12px 0;font-size:11px;color:var(--muted);line-height:1.7;">To export the PDF, re-upload the same project files below. Files already identified will be skipped — no API calls needed.</div><div style="margin-top:6px;"><strong style="font-size:11px;">Expected files:</strong></div>'+manifest.map(f=>'<div class="pc-file"><div class="pc-wait"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>').join('')+'<div style="margin-top:12px;display:flex;gap:8px;"><button class="run-btn" style="width:auto;padding:9px 20px;" onclick="clearSavedProject()">Start Fresh Instead</button></div></div>');
+    const hasSD=sdManifest.length>0;
+    let resumeHtml='<div class="progress-card"><div class="pc-title">Saved Project Found — '+esc(projLabel)+'</div><div class="pc-sub">Last saved: '+esc(savedTime)+' · '+inventory.length+' O&amp;M files'+(hasSD?' · '+sdInventory.length+' shop drawing files':'')+(finalReport||sdFinalReport?' · Ready to export':'')+'</div><div style="margin:12px 0;font-size:11px;color:var(--muted);line-height:1.7;">To export the PDF, re-upload the same project files below. Files already identified will be skipped — no API calls needed.</div>';
+    if(manifest.length>0){resumeHtml+='<div style="margin-top:6px;"><strong style="font-size:11px;">Expected O&amp;M files:</strong></div>'+manifest.map(f=>'<div class="pc-file"><div class="pc-wait"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>').join('');}
+    if(sdManifest.length>0){resumeHtml+='<div style="margin-top:6px;"><strong style="font-size:11px;">Expected Shop Drawing files:</strong></div>'+sdManifest.map(f=>'<div class="pc-file"><div class="pc-wait"></div><span style="font-family:var(--mono);font-size:10.5px;flex:1">'+esc(f.name)+'</span><span style="font-size:10px;color:var(--muted)">'+fmtSz(f.size)+'</span></div>').join('');}
+    resumeHtml+='<div style="margin-top:12px;display:flex;gap:8px;"><button class="run-btn" style="width:auto;padding:9px 20px;" onclick="clearSavedProject()">Start Fresh Instead</button></div></div>';
+    setContent(resumeHtml);
 
-    if(finalReport)checkReady();
+    if(finalReport||sdFinalReport)checkReady();
     return true;
   }catch(e){console.error('Load save failed:',e);return false;}
 }
@@ -845,18 +972,22 @@ function loadSavedProject(){
 function clearSavedProject(){
   localStorage.removeItem('om_project_save');
   inventory=[];structure=null;finalReport=null;specText='';
+  sdInventory=[];sdStructure=null;sdFinalReport=null;
   passState={p1:'idle',p2:'idle',p3:'idle'};
+  sdPassState={p1:'idle',p2:'idle',p3:'idle'};
   resetSteps();
   setContent('<div class="empty-state"><div class="erule"></div><h2>O&amp;M Manual Assembly</h2><p>Upload spec and project documents to begin.</p></div>');
 }
 function setContent(html){document.getElementById('content').innerHTML=html;}
 
 function clearAll(){
-  specFiles=[];docFiles=[];inventory=[];structure=null;finalReport=null;specText='';
+  specFiles=[];docFiles=[];sdFiles=[];inventory=[];structure=null;finalReport=null;specText='';
+  sdInventory=[];sdStructure=null;sdFinalReport=null;
   passState={p1:'idle',p2:'idle',p3:'idle'};
+  sdPassState={p1:'idle',p2:'idle',p3:'idle'};
   localStorage.removeItem('om_project_save');
-  renderSpecList();renderDocList();resetSteps();
-  document.getElementById('spec-input').value='';document.getElementById('doc-input').value='';
+  renderSpecList();renderDocList();renderSdList();resetSteps();
+  document.getElementById('spec-input').value='';document.getElementById('doc-input').value='';document.getElementById('sd-input').value='';
   setContent('<div class="empty-state"><div class="erule"></div><h2>O&amp;M Manual Assembly</h2><p>Upload spec and project documents to begin.</p></div>');
 }
 </script>
@@ -889,7 +1020,9 @@ if(!loadSavedProject()){
 // then merges the actual uploaded PDF files in between — one complete deliverable.
 
 async function exportPDF() {
-  if (!finalReport) return;
+  const hasOm = !!finalReport;
+  const hasSd = !!sdFinalReport;
+  if (!hasOm && !hasSd) return;
 
   const btn = document.querySelector('.ab-pdf');
   if (btn) { btn.textContent = 'Building PDF...'; btn.disabled = true; }
@@ -904,37 +1037,18 @@ async function exportPDF() {
 
     const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
 
-    const projName = finalReport.projectName || document.getElementById('proj-name').value || 'O&M Manual';
-    const projAddr = finalReport.projectAddress || document.getElementById('proj-addr').value || '';
-    const projNum  = finalReport.projectNumber  || document.getElementById('proj-number').value || '';
+    const projName = (hasOm ? finalReport.projectName : sdFinalReport.projectName) || document.getElementById('proj-name').value || 'O&M Manual';
+    const projAddr = (hasOm ? finalReport.projectAddress : sdFinalReport.projectAddress) || document.getElementById('proj-addr').value || '';
+    const projNum  = (hasOm ? finalReport.projectNumber : sdFinalReport.projectNumber) || document.getElementById('proj-number').value || '';
     const projEng  = document.getElementById('proj-engineer').value || '';
-    const dateStr  = finalReport.date || new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+    const dateStr  = (hasOm ? finalReport.date : sdFinalReport.date) || new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
     const printDate = new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
-    const tabs = finalReport.tabs || [];
+    const omTabs = hasOm ? (finalReport.tabs || []) : [];
+    const sdTabs = hasSd ? (sdFinalReport.tabs || []) : [];
 
     function prog(msg) {
       if (progressBadge) progressBadge.textContent = 'Building PDF... ' + msg;
     }
-
-    // ── HELPER: render an HTML page to PDF via iframe + print ────────────────
-    // We render each generated page as a single-page print, capture it, then
-    // embed it. Since PDF-lib can't embed HTML directly, we use a two-phase
-    // approach: render HTML pages to a hidden iframe and use the browser's
-    // built-in print-to-PDF via a Blob URL, then load those bytes.
-    // 
-    // Actually the cleanest approach for a single-file tool is to build ALL
-    // generated pages as one HTML doc, print that to PDF, then use PDF-lib
-    // to merge the real uploaded files INTO the correct positions.
-    //
-    // Flow:
-    // 1. Build generated-pages HTML (cover, index, letter, section covers + content listings)
-    // 2. User prints that to PDF (or we trigger print) — this becomes the "spine"
-    // 3. For each tab, we insert the actual uploaded PDF pages after the section cover
-    //
-    // BUT: browser can't intercept print output as bytes.
-    //
-    // REAL approach: use PDF-lib to draw all generated pages programmatically,
-    // then merge uploaded PDFs in the correct slots.
 
     prog('loading fonts');
     const mergedPdf = await PDFDocument.create();
@@ -954,8 +1068,8 @@ async function exportPDF() {
     const M = 54; // margin
 
     // ── BOOKMARK TRACKING ────────────────────────────────────────────────────
-    let pageIdx = 0; // tracks current page index in mergedPdf
-    const bookmarks = []; // { title, pageIndex, children: [{ title, pageIndex }] }
+    let pageIdx = 0;
+    const bookmarks = [];
 
     // ── LOGO + SIG helpers ───────────────────────────────────────────────────
     let logoImg = null, sigImg = null;
@@ -987,14 +1101,12 @@ async function exportPDF() {
     }
 
     function drawLogoInverted(page, x, y, maxW, maxH) {
-      // On dark background — if we have a logo, draw a white rectangle behind it
       if (!logoImg) {
         page.drawText(company.name || '', { x, y, size: 13, font: helveticaBold, color: WHITE });
         return;
       }
       const { width: iw, height: ih } = logoImg.scale(1);
       const scale = Math.min(maxW / iw, maxH / ih);
-      // Draw white bg rect for logo visibility
       page.drawRectangle({ x: x - 4, y: y - ih * scale - 4, width: iw * scale + 8, height: ih * scale + 8, color: WHITE });
       page.drawImage(logoImg, { x, y: y - ih * scale, width: iw * scale, height: ih * scale });
     }
@@ -1023,17 +1135,11 @@ async function exportPDF() {
       bookmarks.push({ title: 'Cover Page', pageIndex: pageIdx, children: [] });
       pageIdx++;
 
-      // Background
       page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: PAPER });
-
-      // Top bar
       page.drawRectangle({ x: 0, y: H - 90, width: W, height: 90, color: WHITE });
       page.drawRectangle({ x: 0, y: H - 93, width: W, height: 3, color: RED });
-
-      // Logo top-left
       drawLogo(page, M, H - 26, 180, 56);
 
-      // Company info top-right
       const coLines = [company.address, company.city,
         company.phone ? 'Tel: ' + company.phone : '',
         company.email].filter(Boolean);
@@ -1041,45 +1147,37 @@ async function exportPDF() {
         page.drawText(ln, { x: W - M - helvetica.widthOfTextAtSize(ln, 8.5), y: H - 28 - i * 12, size: 8.5, font: helvetica, color: MUTED });
       });
 
-      // Centre content
       const cx = W / 2;
-      // Red rule
       page.drawRectangle({ x: cx - 30, y: H / 2 + 80, width: 60, height: 4, color: RED });
 
-      // Address
       if (projAddr) {
         const aw = helvetica.widthOfTextAtSize(projAddr, 11);
         page.drawText(projAddr, { x: cx - aw / 2, y: H / 2 + 60, size: 11, font: helvetica, color: MUTED });
       }
 
-      // Project name — large, may need wrapping
       const nameLines = wrapText(projName, W - M * 3, timesRoman, 32);
       nameLines.forEach((ln, i) => {
         const lw = timesRoman.widthOfTextAtSize(ln, 32);
         page.drawText(ln, { x: cx - lw / 2, y: H / 2 + 30 - i * 38, size: 32, font: timesRoman, color: INK });
       });
 
-      // Subtitle
       const sub = 'Operation & Maintenance Manual';
       const sw = timesItalic.widthOfTextAtSize(sub, 14);
       page.drawText(sub, { x: cx - sw / 2, y: H / 2 - 30 - (nameLines.length - 1) * 38, size: 14, font: timesItalic, color: MUTED });
 
-      // Second rule
       page.drawRectangle({ x: cx - 30, y: H / 2 - 55 - (nameLines.length - 1) * 38, width: 60, height: 2, color: RED });
 
-      // Date / job / engineer
       const metaParts = [projNum ? 'Job #' + projNum : '', dateStr, projEng].filter(Boolean).join('   ·   ');
       const mw = helvetica.widthOfTextAtSize(metaParts, 10);
       page.drawText(metaParts, { x: cx - mw / 2, y: H / 2 - 75 - (nameLines.length - 1) * 38, size: 10, font: helvetica, color: MUTED });
 
-      // Red stripe bottom
       page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
     }
 
-    // ── PAGE 2+: INDEX (paginated) ──────────────────────────────────────────
+    // ── INDEX (paginated) — includes both O&M and SD sections ────────────────
     prog('index page');
     {
-      const FOOTER_Y = 58; // stop drawing content above this
+      const FOOTER_Y = 58;
       const ROW_H = 22;
       const projHeader = projName + (projNum ? ' — Job #' + projNum : '');
 
@@ -1107,10 +1205,21 @@ async function exportPDF() {
       let ry = drawIndexHeader(curPage, true);
       let rowCount = 0;
 
-      const indexRows = [
-        { tab: '—', name: 'Substantial Completion / Warranty Letter' },
-        ...tabs.map((t, i) => ({ tab: String(t.tabNumber || i + 1), name: t.tabName }))
-      ];
+      // Build combined index rows — O&M section header + rows, then SD section header + rows
+      const indexRows = [];
+
+      if (hasOm) {
+        // O&M section divider row
+        indexRows.push({ divider: true, label: 'Operation & Maintenance Manuals' });
+        indexRows.push({ tab: '—', name: 'Substantial Completion / Warranty Letter' });
+        omTabs.forEach((t, i) => indexRows.push({ tab: String(t.tabNumber || i + 1), name: t.tabName }));
+      }
+
+      if (hasSd) {
+        // SD section divider row
+        indexRows.push({ divider: true, label: 'Shop Drawings' });
+        sdTabs.forEach((t, i) => indexRows.push({ tab: String(t.tabNumber || i + 1), name: t.tabName }));
+      }
 
       for (let i = 0; i < indexRows.length; i++) {
         if (ry < FOOTER_Y) {
@@ -1121,17 +1230,25 @@ async function exportPDF() {
           rowCount = 0;
         }
         const row = indexRows[i];
-        if (rowCount % 2 === 1) curPage.drawRectangle({ x: M, y: ry - 6, width: W - M * 2, height: 22, color: rgb(0.98, 0.973, 0.957) });
-        curPage.drawText(row.tab, { x: M + 8, y: ry, size: 9.5, font: helveticaBold, color: INK });
-        curPage.drawText(row.name, { x: M + 70, y: ry, size: 9.5, font: helvetica, color: INK });
-        ry -= ROW_H;
-        rowCount++;
+        if (row.divider) {
+          // Section heading row — dark background, label text
+          curPage.drawRectangle({ x: M, y: ry - 4, width: W - M * 2, height: 20, color: INK });
+          curPage.drawText(row.label, { x: M + 8, y: ry + 2, size: 8.5, font: helveticaBold, color: WHITE });
+          ry -= ROW_H;
+          rowCount = 0; // reset alternating so first data row is always light
+        } else {
+          if (rowCount % 2 === 1) curPage.drawRectangle({ x: M, y: ry - 6, width: W - M * 2, height: 22, color: rgb(0.98, 0.973, 0.957) });
+          curPage.drawText(row.tab, { x: M + 8, y: ry, size: 9.5, font: helveticaBold, color: INK });
+          curPage.drawText(row.name, { x: M + 70, y: ry, size: 9.5, font: helvetica, color: INK });
+          ry -= ROW_H;
+          rowCount++;
+        }
       }
 
       drawIndexFooter(curPage);
     }
 
-    // ── PAGE 3: SUBSTANTIAL COMPLETION LETTER ────────────────────────────────
+    // ── SUBSTANTIAL COMPLETION LETTER ────────────────────────────────────────
     prog('warranty letter');
     {
       const page = mergedPdf.addPage([W, H]);
@@ -1139,31 +1256,25 @@ async function exportPDF() {
       pageIdx++;
       page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
 
-      // Header
       drawLogo(page, M, H - 26, 160, 50);
       page.drawText(projName + (projNum ? ' — Job #' + projNum : ''), { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
       page.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
 
       let cy = H - 100;
 
-      // From address
       const fromLines = [company.address, company.city, company.phone ? company.phone : ''].filter(Boolean);
       fromLines.forEach(ln => { page.drawText(ln, { x: M, y: cy, size: 9, font: helvetica, color: MUTED }); cy -= 13; });
       cy -= 10;
 
-      // Date
       page.drawText(dateStr, { x: M, y: cy, size: 10, font: helvetica, color: INK }); cy -= 20;
 
-      // To
       page.drawText(projName, { x: M, y: cy, size: 10, font: helveticaBold, color: INK }); cy -= 14;
       if (projAddr) { page.drawText(projAddr, { x: M, y: cy, size: 10, font: helvetica, color: INK }); cy -= 20; }
       cy -= 6;
 
-      // RE line
       page.drawText('RE: Substantial Completion / Commissioning of Units / Occupancy', { x: M, y: cy, size: 10, font: helveticaBold, color: INK }); cy -= 24;
 
-      // Body paragraphs
-      const scl = finalReport.fixedSections && finalReport.fixedSections.substantialCompletionLetter;
+      const scl = finalReport && finalReport.fixedSections && finalReport.fixedSections.substantialCompletionLetter;
       const equipSummary = (scl && scl.equipmentSummary) || 'All mechanical equipment has been commissioned and is operating as per specifications, plans and change orders.';
 
       const paras = [
@@ -1181,7 +1292,6 @@ async function exportPDF() {
 
       cy -= 20;
 
-      // Signature image
       if (sigImg) {
         const { width: sw, height: sh } = sigImg.scale(1);
         const scale = Math.min(180 / sw, 70 / sh);
@@ -1189,257 +1299,267 @@ async function exportPDF() {
         cy -= sh * scale + 8;
       }
 
-      // Sig line
       page.drawLine({ start: { x: M, y: cy }, end: { x: M + 220, y: cy }, thickness: 1, color: INK }); cy -= 14;
       page.drawText(company.preparedby || '', { x: M, y: cy, size: 11, font: helveticaBold, color: INK }); cy -= 14;
       page.drawText(company.name || '', { x: M, y: cy, size: 10, font: helvetica, color: MUTED }); cy -= 13;
       if (company.title) { page.drawText(company.title, { x: M, y: cy, size: 9, font: helvetica, color: MUTED }); }
 
-      // Footer
       page.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
       page.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
       page.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
     }
 
-    // ── TAB SECTIONS ─────────────────────────────────────────────────────────
-    for (let ti = 0; ti < tabs.length; ti++) {
-      const tab = tabs[ti];
-      prog('Tab ' + (tab.tabNumber || ti + 1) + ' of ' + tabs.length + ' — ' + tab.tabName);
-
-      // Section cover page
-      const tabBookmark = { title: 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName, pageIndex: pageIdx, children: [] };
-      bookmarks.push(tabBookmark);
+    // ── HELPER: render one stream's tab sections into the PDF ─────────────────
+    async function renderTabSections(tabs, activeInventory, activeFiles, sectionLabel) {
+      // Major section divider page
       {
         const page = mergedPdf.addPage([W, H]);
+        const divBm = { title: sectionLabel, pageIndex: pageIdx, children: [] };
+        bookmarks.push(divBm);
         pageIdx++;
 
-        // Dark background
+        // Full dark page — same style as section covers but no content details
         page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: INK });
-
-        // Top bar with logo
         page.drawRectangle({ x: 0, y: H - 90, width: W, height: 90, color: rgb(0.08, 0.08, 0.16) });
         page.drawRectangle({ x: 0, y: H - 93, width: W, height: 3, color: RED });
         drawLogoInverted(page, M, H - 22, 180, 56);
 
-        // Centre content
         const cx = W / 2;
-        const coverLines = tab.sectionCoverLines || [projAddr, projName, tab.manufacturer || '', tab.equipment || ''];
-        const styles = [
-          { size: 11, font: helvetica, color: rgb(0.478, 0.459, 0.404) },
-          { size: 26, font: timesRoman, color: WHITE },
-          { size: 18, font: timesItalic, color: rgb(0.8, 0.8, 0.8) },
-          { size: 14, font: helvetica, color: rgb(0.65, 0.65, 0.65) },
-        ];
+        const labelW = timesRoman.widthOfTextAtSize(sectionLabel, 28);
+        page.drawText(sectionLabel, { x: cx - labelW / 2, y: H / 2 + 10, size: 28, font: timesRoman, color: WHITE });
 
-        let startY = H / 2 + 60;
-        coverLines.forEach((ln, li) => {
-          if (!ln) return;
-          const style = styles[Math.min(li, styles.length - 1)];
-          const lines = wrapText(ln, W - M * 3, style.font, style.size);
-          lines.forEach((l, lineIdx) => {
-            const lw = style.font.widthOfTextAtSize(l, style.size);
-            page.drawText(l, { x: cx - lw / 2, y: startY - lineIdx * (style.size + 6), size: style.size, font: style.font, color: style.color });
-          });
-          startY -= (style.size + 10) * Math.max(1, wrapText(ln, W - M * 3, style.font, style.size).length) + 6;
-        });
+        const subLabel = projName + (projNum ? ' — Job #' + projNum : '');
+        const subW = helvetica.widthOfTextAtSize(subLabel, 11);
+        page.drawText(subLabel, { x: cx - subW / 2, y: H / 2 - 22, size: 11, font: helvetica, color: MUTED });
 
-        // Tab number bottom right
-        const tabLabel = 'Tab ' + (tab.tabNumber || ti + 1);
-        page.drawText(tabLabel, { x: W - M - helvetica.widthOfTextAtSize(tabLabel, 10), y: M, size: 10, font: helvetica, color: rgb(0.4, 0.4, 0.5) });
-
-        // Red stripe bottom
+        page.drawRectangle({ x: cx - 30, y: H / 2 - 42, width: 60, height: 2, color: RED });
         page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
       }
 
-      // Content listing page(s) — paginated
-      {
-        const FOOTER_Y = 58;
-        const ROW_H = 20;
-        const badge = 'Tab ' + (tab.tabNumber || ti + 1);
-        const projHeader = projName + (projNum ? ' — Job #' + projNum : '');
-        const footMid = 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName;
+      for (let ti = 0; ti < tabs.length; ti++) {
+        const tab = tabs[ti];
+        prog(sectionLabel + ' — Tab ' + (tab.tabNumber || ti + 1) + ' of ' + tabs.length + ' — ' + tab.tabName);
 
-        function drawContentHeader(pg, isFirst) {
-          pg.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
-          drawLogo(pg, M, H - 26, 160, 50);
-          pg.drawText(projHeader, { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
-          pg.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
-          let startY = H - 86;
-          if (isFirst) {
-            pg.drawRectangle({ x: M, y: H - 100, width: helveticaBold.widthOfTextAtSize(badge, 9) + 16, height: 18, color: INK, borderRadius: 2 });
-            pg.drawText(badge, { x: M + 8, y: H - 95, size: 9, font: helveticaBold, color: WHITE });
-            pg.drawText(tab.tabName, { x: M + helveticaBold.widthOfTextAtSize(badge, 9) + 26, y: H - 96, size: 16, font: timesRoman, color: INK });
-            startY = H - 115;
-            if (tab.documentSummary) {
-              const sumLines = wrapText(tab.documentSummary, W - M * 2, helvetica, 9.5);
-              sumLines.forEach((ln, si) => {
-                pg.drawText(ln, { x: M, y: startY - si * 13, size: 9.5, font: helvetica, color: MUTED });
-              });
-              startY -= sumLines.length * 13 + 10;
-            }
-          }
-          // Table header row
-          pg.drawRectangle({ x: M, y: startY - 18, width: W - M * 2, height: 20, color: INK });
-          pg.drawText('Document', { x: M + 8, y: startY - 12, size: 8.5, font: helveticaBold, color: WHITE });
-          pg.drawText('File', { x: M + 180, y: startY - 12, size: 8.5, font: helveticaBold, color: WHITE });
-          return startY - 38;
-        }
-        function drawContentFooter(pg) {
-          const cx = W / 2;
-          pg.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
-          pg.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
-          pg.drawText(footMid, { x: cx - helvetica.widthOfTextAtSize(footMid, 7.5) / 2, y: 22, size: 7.5, font: helvetica, color: MUTED });
-          pg.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
-        }
+        // Section cover page
+        const tabBookmark = { title: 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName, pageIndex: pageIdx, children: [] };
+        // Add as child of the section divider bookmark (last in bookmarks array)
+        bookmarks[bookmarks.length - 1].children.push({ title: 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName, pageIndex: pageIdx });
+        // Also keep a ref for content listing / file children
+        const tabBmRef = bookmarks[bookmarks.length - 1].children[bookmarks[bookmarks.length - 1].children.length - 1];
+        tabBmRef.children = tabBmRef.children || [];
 
-        let curPage = mergedPdf.addPage([W, H]);
-        tabBookmark.children.push({ title: 'Content Listing', pageIndex: pageIdx });
-        pageIdx++;
-        let ty = drawContentHeader(curPage, true);
-        let rowCount = 0;
-
-        const presItems = tab.presentItems || [];
-        for (let ri = 0; ri < presItems.length; ri++) {
-          if (ty < FOOTER_Y) {
-            drawContentFooter(curPage);
-            curPage = mergedPdf.addPage([W, H]);
-            pageIdx++;
-            ty = drawContentHeader(curPage, false);
-            rowCount = 0;
-          }
-          const item = presItems[ri];
-          if (rowCount % 2 === 0) curPage.drawRectangle({ x: M, y: ty - 5, width: W - M * 2, height: 20, color: rgb(0.98, 0.973, 0.957) });
-          const file = (tab.files || []).find(fn => {
-            const inv = inventory.find(x => x.filename === fn);
-            return inv && ((inv.docTypes || []).some(d => d.toLowerCase().includes(item.toLowerCase())) || item.toLowerCase().includes(((inv.docTypes || [''])[0] || '').toLowerCase()));
-          }) || (tab.files || [])[0] || '';
-          curPage.drawText(item, { x: M + 8, y: ty, size: 9, font: helvetica, color: INK });
-          let fn = file;
-          while (fn && helvetica.widthOfTextAtSize(fn, 8) > W - M * 2 - 185) fn = fn.slice(0, -4) + '…';
-          if (fn) curPage.drawText(fn, { x: M + 180, y: ty, size: 8, font: helvetica, color: MUTED });
-          ty -= ROW_H;
-          rowCount++;
-        }
-
-        drawContentFooter(curPage);
-      }
-
-      // ── MERGE ACTUAL UPLOADED PDFs FOR THIS TAB ─────────────────────────────
-      for (const filename of (tab.files || [])) {
-        const fileObj = docFiles.find(f => f.name === filename);
-        if (!fileObj || !filename.toLowerCase().endsWith('.pdf')) continue;
-
-        prog('merging ' + filename);
-        try {
-          const arrayBuf = await fileObj.arrayBuffer();
-          const srcPdf = await PDFDocument.load(arrayBuf, { ignoreEncryption: true });
-          const pageCount = srcPdf.getPageCount();
-          const pageIndices = Array.from({ length: pageCount }, (_, i) => i);
-          tabBookmark.children.push({ title: filename.replace(/\.pdf$/i, ''), pageIndex: pageIdx });
-          const copiedPages = await mergedPdf.copyPages(srcPdf, pageIndices);
-          copiedPages.forEach(p => mergedPdf.addPage(p));
-          pageIdx += pageCount;
-          prog('merged ' + pageCount + ' pages from ' + filename);
-        } catch (err) {
-          // If PDF can't be merged (encrypted, corrupt), add a placeholder page
-          tabBookmark.children.push({ title: filename.replace(/\.pdf$/i, '') + ' (could not merge)', pageIndex: pageIdx });
+        {
           const page = mergedPdf.addPage([W, H]);
-          page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
-          page.drawText('[ ' + filename + ' ]', { x: M, y: H / 2 + 10, size: 12, font: helveticaBold, color: INK });
-          page.drawText('This document could not be merged automatically.', { x: M, y: H / 2 - 10, size: 10, font: helvetica, color: MUTED });
-          page.drawText('Please insert manually: ' + filename, { x: M, y: H / 2 - 28, size: 9, font: helvetica, color: MUTED });
           pageIdx++;
+
+          page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: INK });
+          page.drawRectangle({ x: 0, y: H - 90, width: W, height: 90, color: rgb(0.08, 0.08, 0.16) });
+          page.drawRectangle({ x: 0, y: H - 93, width: W, height: 3, color: RED });
+          drawLogoInverted(page, M, H - 22, 180, 56);
+
+          const cx = W / 2;
+          const coverLines = tab.sectionCoverLines || [projAddr, projName, tab.manufacturer || '', tab.equipment || ''];
+          const styles = [
+            { size: 11, font: helvetica, color: rgb(0.478, 0.459, 0.404) },
+            { size: 26, font: timesRoman, color: WHITE },
+            { size: 18, font: timesItalic, color: rgb(0.8, 0.8, 0.8) },
+            { size: 14, font: helvetica, color: rgb(0.65, 0.65, 0.65) },
+          ];
+
+          let startY = H / 2 + 60;
+          coverLines.forEach((ln, li) => {
+            if (!ln) return;
+            const style = styles[Math.min(li, styles.length - 1)];
+            const lines = wrapText(ln, W - M * 3, style.font, style.size);
+            lines.forEach((l, lineIdx) => {
+              const lw = style.font.widthOfTextAtSize(l, style.size);
+              page.drawText(l, { x: cx - lw / 2, y: startY - lineIdx * (style.size + 6), size: style.size, font: style.font, color: style.color });
+            });
+            startY -= (style.size + 10) * Math.max(1, wrapText(ln, W - M * 3, style.font, style.size).length) + 6;
+          });
+
+          const tabLabel = 'Tab ' + (tab.tabNumber || ti + 1);
+          page.drawText(tabLabel, { x: W - M - helvetica.widthOfTextAtSize(tabLabel, 10), y: M, size: 10, font: helvetica, color: rgb(0.4, 0.4, 0.5) });
+          page.drawRectangle({ x: 0, y: 0, width: W, height: 8, color: RED });
+        }
+
+        // Content listing page(s) — paginated
+        {
+          const FOOTER_Y = 58;
+          const ROW_H = 20;
+          const badge = 'Tab ' + (tab.tabNumber || ti + 1);
+          const projHeader = projName + (projNum ? ' — Job #' + projNum : '');
+          const footMid = 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName;
+
+          function drawContentHeader(pg, isFirst) {
+            pg.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+            drawLogo(pg, M, H - 26, 160, 50);
+            pg.drawText(projHeader, { x: W - M - 200, y: H - 30, size: 9, font: helvetica, color: MUTED });
+            pg.drawRectangle({ x: M, y: H - 68, width: W - M * 2, height: 2, color: INK });
+            let startY = H - 86;
+            if (isFirst) {
+              pg.drawRectangle({ x: M, y: H - 100, width: helveticaBold.widthOfTextAtSize(badge, 9) + 16, height: 18, color: INK, borderRadius: 2 });
+              pg.drawText(badge, { x: M + 8, y: H - 95, size: 9, font: helveticaBold, color: WHITE });
+              pg.drawText(tab.tabName, { x: M + helveticaBold.widthOfTextAtSize(badge, 9) + 26, y: H - 96, size: 16, font: timesRoman, color: INK });
+              startY = H - 115;
+              if (tab.documentSummary) {
+                const sumLines = wrapText(tab.documentSummary, W - M * 2, helvetica, 9.5);
+                sumLines.forEach((ln, si) => {
+                  pg.drawText(ln, { x: M, y: startY - si * 13, size: 9.5, font: helvetica, color: MUTED });
+                });
+                startY -= sumLines.length * 13 + 10;
+              }
+            }
+            pg.drawRectangle({ x: M, y: startY - 18, width: W - M * 2, height: 20, color: INK });
+            pg.drawText('Document', { x: M + 8, y: startY - 12, size: 8.5, font: helveticaBold, color: WHITE });
+            pg.drawText('File', { x: M + 180, y: startY - 12, size: 8.5, font: helveticaBold, color: WHITE });
+            return startY - 38;
+          }
+          function drawContentFooter(pg) {
+            const cx = W / 2;
+            pg.drawRectangle({ x: M, y: 36, width: W - M * 2, height: 1, color: rgb(0.83, 0.812, 0.769) });
+            pg.drawText(company.name || '', { x: M, y: 22, size: 7.5, font: helvetica, color: MUTED });
+            pg.drawText(footMid, { x: cx - helvetica.widthOfTextAtSize(footMid, 7.5) / 2, y: 22, size: 7.5, font: helvetica, color: MUTED });
+            pg.drawText('Printed ' + printDate, { x: W - M - helvetica.widthOfTextAtSize('Printed ' + printDate, 7.5), y: 22, size: 7.5, font: helvetica, color: MUTED });
+          }
+
+          let curPage = mergedPdf.addPage([W, H]);
+          tabBmRef.children.push({ title: 'Content Listing', pageIndex: pageIdx });
+          pageIdx++;
+          let ty = drawContentHeader(curPage, true);
+          let rowCount = 0;
+
+          const presItems = tab.presentItems || [];
+          for (let ri = 0; ri < presItems.length; ri++) {
+            if (ty < FOOTER_Y) {
+              drawContentFooter(curPage);
+              curPage = mergedPdf.addPage([W, H]);
+              pageIdx++;
+              ty = drawContentHeader(curPage, false);
+              rowCount = 0;
+            }
+            const item = presItems[ri];
+            if (rowCount % 2 === 0) curPage.drawRectangle({ x: M, y: ty - 5, width: W - M * 2, height: 20, color: rgb(0.98, 0.973, 0.957) });
+            const file = (tab.files || []).find(fn => {
+              const inv = activeInventory.find(x => x.filename === fn);
+              return inv && ((inv.docTypes || []).some(d => d.toLowerCase().includes(item.toLowerCase())) || item.toLowerCase().includes(((inv.docTypes || [''])[0] || '').toLowerCase()));
+            }) || (tab.files || [])[0] || '';
+            curPage.drawText(item, { x: M + 8, y: ty, size: 9, font: helvetica, color: INK });
+            let fn = file;
+            while (fn && helvetica.widthOfTextAtSize(fn, 8) > W - M * 2 - 185) fn = fn.slice(0, -4) + '…';
+            if (fn) curPage.drawText(fn, { x: M + 180, y: ty, size: 8, font: helvetica, color: MUTED });
+            ty -= ROW_H;
+            rowCount++;
+          }
+
+          drawContentFooter(curPage);
+        }
+
+        // ── MERGE ACTUAL UPLOADED PDFs FOR THIS TAB ───────────────────────────
+        for (const filename of (tab.files || [])) {
+          const fileObj = activeFiles.find(f => f.name === filename);
+          if (!fileObj || !filename.toLowerCase().endsWith('.pdf')) continue;
+
+          prog('merging ' + filename);
+          try {
+            const arrayBuf = await fileObj.arrayBuffer();
+            const srcPdf = await PDFDocument.load(arrayBuf, { ignoreEncryption: true });
+            const pageCount = srcPdf.getPageCount();
+            const pageIndices = Array.from({ length: pageCount }, (_, i) => i);
+            tabBmRef.children.push({ title: filename.replace(/\.pdf$/i, ''), pageIndex: pageIdx });
+            const copiedPages = await mergedPdf.copyPages(srcPdf, pageIndices);
+            copiedPages.forEach(p => mergedPdf.addPage(p));
+            pageIdx += pageCount;
+          } catch (err) {
+            tabBmRef.children.push({ title: filename.replace(/\.pdf$/i, '') + ' (could not merge)', pageIndex: pageIdx });
+            const page = mergedPdf.addPage([W, H]);
+            page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
+            page.drawText('[ ' + filename + ' ]', { x: M, y: H / 2 + 10, size: 12, font: helveticaBold, color: INK });
+            page.drawText('This document could not be merged automatically.', { x: M, y: H / 2 - 10, size: 10, font: helvetica, color: MUTED });
+            page.drawText('Please insert manually: ' + filename, { x: M, y: H / 2 - 28, size: 9, font: helvetica, color: MUTED });
+            pageIdx++;
+          }
         }
       }
     }
 
-    // ── BUILD PDF OUTLINE (BOOKMARKS / TABS) ─────────────────────────────
+    // ── RENDER O&M TABS ───────────────────────────────────────────────────────
+    if (hasOm && omTabs.length > 0) {
+      await renderTabSections(omTabs, inventory, docFiles, 'Operation & Maintenance Manuals');
+    }
+
+    // ── RENDER SHOP DRAWING TABS ─────────────────────────────────────────────
+    if (hasSd && sdTabs.length > 0) {
+      await renderTabSections(sdTabs, sdInventory, sdFiles, 'Shop Drawings');
+    }
+
+    // ── BUILD PDF OUTLINE (BOOKMARKS) ─────────────────────────────────────────
     prog('adding bookmarks');
     {
       const ctx = mergedPdf.context;
       const pages = mergedPdf.getPages();
 
-      // Helper: create a destination array [pageRef, /Fit]
       function pageDest(pgIdx) {
         const pg = pages[Math.min(pgIdx, pages.length - 1)];
         return ctx.obj([pg.ref, 'Fit']);
       }
 
-      // Build outline items bottom-up so we can link siblings and children
-      // Each bookmark: { title, pageIndex, children: [...] }
+      // Recursive helper — builds outline items for a bookmark node and its children
+      function buildOutlineItem(bm, parentRef) {
+        const childRefs = (bm.children || []).map(ch => buildOutlineItem(ch, null));
 
-      const outlineRoot = ctx.obj({ Type: 'Outlines', Count: 0 });
-      const outlineRootRef = ctx.register(outlineRoot);
-
-      const topRefs = []; // refs for top-level items
-
-      for (let bi = 0; bi < bookmarks.length; bi++) {
-        const bm = bookmarks[bi];
-
-        // Create child items first
-        const childRefs = [];
-        for (let ci = 0; ci < (bm.children || []).length; ci++) {
-          const ch = bm.children[ci];
-          const childDict = ctx.obj({
-            Title: PDFLib.PDFHexString.fromText(ch.title),
-            Dest: pageDest(ch.pageIndex),
-            Count: 0
-          });
-          childRefs.push(ctx.register(childDict));
-        }
-
-        // Create parent item
-        const parentDict = ctx.obj({
+        const dict = ctx.obj({
           Title: PDFLib.PDFHexString.fromText(bm.title),
           Dest: pageDest(bm.pageIndex),
-          Parent: outlineRootRef,
           Count: childRefs.length
         });
-        const parentRef = ctx.register(parentDict);
-        topRefs.push(parentRef);
+        const ref = ctx.register(dict);
 
-        // Link children to parent and to each other
+        if (parentRef) dict.set(PDFLib.PDFName.of('Parent'), parentRef);
+
         for (let ci = 0; ci < childRefs.length; ci++) {
           const cDict = ctx.lookup(childRefs[ci]);
-          cDict.set(PDFLib.PDFName.of('Parent'), parentRef);
+          cDict.set(PDFLib.PDFName.of('Parent'), ref);
           if (ci > 0) cDict.set(PDFLib.PDFName.of('Prev'), childRefs[ci - 1]);
           if (ci < childRefs.length - 1) cDict.set(PDFLib.PDFName.of('Next'), childRefs[ci + 1]);
         }
 
-        // Set First/Last child on parent
         if (childRefs.length > 0) {
-          parentDict.set(PDFLib.PDFName.of('First'), childRefs[0]);
-          parentDict.set(PDFLib.PDFName.of('Last'), childRefs[childRefs.length - 1]);
+          dict.set(PDFLib.PDFName.of('First'), childRefs[0]);
+          dict.set(PDFLib.PDFName.of('Last'), childRefs[childRefs.length - 1]);
         }
+
+        return ref;
       }
 
-      // Link top-level items to each other
+      const outlineRoot = ctx.obj({ Type: 'Outlines', Count: 0 });
+      const outlineRootRef = ctx.register(outlineRoot);
+
+      const topRefs = bookmarks.map(bm => buildOutlineItem(bm, outlineRootRef));
+
       for (let i = 0; i < topRefs.length; i++) {
         const dict = ctx.lookup(topRefs[i]);
         if (i > 0) dict.set(PDFLib.PDFName.of('Prev'), topRefs[i - 1]);
         if (i < topRefs.length - 1) dict.set(PDFLib.PDFName.of('Next'), topRefs[i + 1]);
       }
 
-      // Set root First/Last/Count
       if (topRefs.length > 0) {
         outlineRoot.set(PDFLib.PDFName.of('First'), topRefs[0]);
         outlineRoot.set(PDFLib.PDFName.of('Last'), topRefs[topRefs.length - 1]);
         outlineRoot.set(PDFLib.PDFName.of('Count'), PDFLib.PDFNumber.of(topRefs.length));
       }
 
-      // Attach to document catalog
       mergedPdf.catalog.set(PDFLib.PDFName.of('Outlines'), outlineRootRef);
       mergedPdf.catalog.set(PDFLib.PDFName.of('PageMode'), PDFLib.PDFName.of('UseOutlines'));
     }
 
-    // ── SAVE ─────────────────────────────────────────────────────────────────
+    // ── SAVE ──────────────────────────────────────────────────────────────────
     prog('saving...');
     const pdfBytes = await mergedPdf.save();
     const safeProj = projName.replace(/[^a-zA-Z0-9\s\-]/g, '').replace(/\s+/g, '_').slice(0, 40);
     const filename = 'OM_Manual_' + safeProj + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
     download(pdfBytes, filename, 'application/pdf');
 
-    // Remove progress indicator
     if (progressBadge) progressBadge.remove();
     if (btn) { btn.textContent = 'Export Full Manual PDF'; btn.disabled = false; }
 
