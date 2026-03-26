@@ -855,6 +855,10 @@ async function exportPDF() {
     const W = 612, H = 792; // US Letter points
     const M = 54; // margin
 
+    // ── BOOKMARK TRACKING ────────────────────────────────────────────────────
+    let pageIdx = 0; // tracks current page index in mergedPdf
+    const bookmarks = []; // { title, pageIndex, children: [{ title, pageIndex }] }
+
     // ── LOGO + SIG helpers ───────────────────────────────────────────────────
     let logoImg = null, sigImg = null;
 
@@ -918,6 +922,8 @@ async function exportPDF() {
     prog('cover page');
     {
       const page = mergedPdf.addPage([W, H]);
+      bookmarks.push({ title: 'Cover Page', pageIndex: pageIdx, children: [] });
+      pageIdx++;
 
       // Background
       page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: PAPER });
@@ -976,6 +982,8 @@ async function exportPDF() {
     prog('index page');
     {
       const page = mergedPdf.addPage([W, H]);
+      bookmarks.push({ title: 'Index', pageIndex: pageIdx, children: [] });
+      pageIdx++;
       page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
 
       // Header
@@ -1015,6 +1023,8 @@ async function exportPDF() {
     prog('warranty letter');
     {
       const page = mergedPdf.addPage([W, H]);
+      bookmarks.push({ title: 'Substantial Completion / Warranty Letter', pageIndex: pageIdx, children: [] });
+      pageIdx++;
       page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
 
       // Header
@@ -1085,8 +1095,11 @@ async function exportPDF() {
       prog('Tab ' + (tab.tabNumber || ti + 1) + ' of ' + tabs.length + ' — ' + tab.tabName);
 
       // Section cover page
+      const tabBookmark = { title: 'Tab ' + (tab.tabNumber || ti + 1) + ' — ' + tab.tabName, pageIndex: pageIdx, children: [] };
+      bookmarks.push(tabBookmark);
       {
         const page = mergedPdf.addPage([W, H]);
+        pageIdx++;
 
         // Dark background
         page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: INK });
@@ -1129,6 +1142,8 @@ async function exportPDF() {
       // Content listing page
       {
         const page = mergedPdf.addPage([W, H]);
+        tabBookmark.children.push({ title: 'Content Listing', pageIndex: pageIdx });
+        pageIdx++;
         page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
 
         // Header
@@ -1193,18 +1208,101 @@ async function exportPDF() {
           const srcPdf = await PDFDocument.load(arrayBuf, { ignoreEncryption: true });
           const pageCount = srcPdf.getPageCount();
           const pageIndices = Array.from({ length: pageCount }, (_, i) => i);
+          tabBookmark.children.push({ title: filename.replace(/\.pdf$/i, ''), pageIndex: pageIdx });
           const copiedPages = await mergedPdf.copyPages(srcPdf, pageIndices);
           copiedPages.forEach(p => mergedPdf.addPage(p));
+          pageIdx += pageCount;
           prog('merged ' + pageCount + ' pages from ' + filename);
         } catch (err) {
           // If PDF can't be merged (encrypted, corrupt), add a placeholder page
+          tabBookmark.children.push({ title: filename.replace(/\.pdf$/i, '') + ' (could not merge)', pageIndex: pageIdx });
           const page = mergedPdf.addPage([W, H]);
           page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: WHITE });
           page.drawText('[ ' + filename + ' ]', { x: M, y: H / 2 + 10, size: 12, font: helveticaBold, color: INK });
           page.drawText('This document could not be merged automatically.', { x: M, y: H / 2 - 10, size: 10, font: helvetica, color: MUTED });
           page.drawText('Please insert manually: ' + filename, { x: M, y: H / 2 - 28, size: 9, font: helvetica, color: MUTED });
+          pageIdx++;
         }
       }
+    }
+
+    // ── BUILD PDF OUTLINE (BOOKMARKS / TABS) ─────────────────────────────
+    prog('adding bookmarks');
+    {
+      const ctx = mergedPdf.context;
+      const pages = mergedPdf.getPages();
+
+      // Helper: create a destination array [pageRef, /Fit]
+      function pageDest(pgIdx) {
+        const pg = pages[Math.min(pgIdx, pages.length - 1)];
+        return ctx.obj([pg.ref, 'Fit']);
+      }
+
+      // Build outline items bottom-up so we can link siblings and children
+      // Each bookmark: { title, pageIndex, children: [...] }
+
+      const outlineRoot = ctx.obj({ Type: 'Outlines', Count: 0 });
+      const outlineRootRef = ctx.register(outlineRoot);
+
+      const topRefs = []; // refs for top-level items
+
+      for (let bi = 0; bi < bookmarks.length; bi++) {
+        const bm = bookmarks[bi];
+
+        // Create child items first
+        const childRefs = [];
+        for (let ci = 0; ci < (bm.children || []).length; ci++) {
+          const ch = bm.children[ci];
+          const childDict = ctx.obj({
+            Title: PDFLib.PDFHexString.fromText(ch.title),
+            Dest: pageDest(ch.pageIndex),
+            Count: 0
+          });
+          childRefs.push(ctx.register(childDict));
+        }
+
+        // Create parent item
+        const parentDict = ctx.obj({
+          Title: PDFLib.PDFHexString.fromText(bm.title),
+          Dest: pageDest(bm.pageIndex),
+          Parent: outlineRootRef,
+          Count: childRefs.length
+        });
+        const parentRef = ctx.register(parentDict);
+        topRefs.push(parentRef);
+
+        // Link children to parent and to each other
+        for (let ci = 0; ci < childRefs.length; ci++) {
+          const cDict = ctx.lookup(childRefs[ci]);
+          cDict.set(PDFLib.PDFName.of('Parent'), parentRef);
+          if (ci > 0) cDict.set(PDFLib.PDFName.of('Prev'), childRefs[ci - 1]);
+          if (ci < childRefs.length - 1) cDict.set(PDFLib.PDFName.of('Next'), childRefs[ci + 1]);
+        }
+
+        // Set First/Last child on parent
+        if (childRefs.length > 0) {
+          parentDict.set(PDFLib.PDFName.of('First'), childRefs[0]);
+          parentDict.set(PDFLib.PDFName.of('Last'), childRefs[childRefs.length - 1]);
+        }
+      }
+
+      // Link top-level items to each other
+      for (let i = 0; i < topRefs.length; i++) {
+        const dict = ctx.lookup(topRefs[i]);
+        if (i > 0) dict.set(PDFLib.PDFName.of('Prev'), topRefs[i - 1]);
+        if (i < topRefs.length - 1) dict.set(PDFLib.PDFName.of('Next'), topRefs[i + 1]);
+      }
+
+      // Set root First/Last/Count
+      if (topRefs.length > 0) {
+        outlineRoot.set(PDFLib.PDFName.of('First'), topRefs[0]);
+        outlineRoot.set(PDFLib.PDFName.of('Last'), topRefs[topRefs.length - 1]);
+        outlineRoot.set(PDFLib.PDFName.of('Count'), PDFLib.PDFNumber.of(topRefs.length));
+      }
+
+      // Attach to document catalog
+      mergedPdf.catalog.set(PDFLib.PDFName.of('Outlines'), outlineRootRef);
+      mergedPdf.catalog.set(PDFLib.PDFName.of('PageMode'), PDFLib.PDFName.of('UseOutlines'));
     }
 
     // ── SAVE ─────────────────────────────────────────────────────────────────
